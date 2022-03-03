@@ -1,11 +1,11 @@
-// RAINBOND, Application Management Platform
-// Copyright (C) 2020-2020 Goodrain Co., Ltd.
+// WUTONG, Application Management Platform
+// Copyright (C) 2020-2020 Wutong Co., Ltd.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version. For any non-GPL usage of Rainbond,
-// one or multiple Commercial Licenses authorized by Goodrain Co., Ltd.
+// (at your option) any later version. For any non-GPL usage of Wutong,
+// one or multiple Commercial Licenses authorized by Wutong Co., Ltd.
 // must be obtained first.
 
 // This program is distributed in the hope that it will be useful,
@@ -23,8 +23,8 @@ import (
 	"testing"
 
 	"github.com/docker/docker/client"
-	"github.com/goodrain/rainbond-oam/pkg/ram/v1alpha1"
 	"github.com/sirupsen/logrus"
+	"github.com/wutong-paas/wutong-oam/pkg/ram/v1alpha1"
 )
 
 func TestImport(t *testing.T) {
@@ -33,7 +33,7 @@ func TestImport(t *testing.T) {
 	info, err := im.Import("/Users/barnett/Downloads/默认应用-1.0-ram.tar.gz", v1alpha1.ImageInfo{
 		HubPassword: os.Getenv("PASS"),
 		Namespace:   "test",
-		HubURL:      "image.goodrain.com",
+		HubURL:      "image.wutong-paas.com",
 		HubUser:     "root",
 	})
 	if err != nil {

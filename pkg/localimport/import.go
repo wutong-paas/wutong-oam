@@ -1,11 +1,11 @@
-// RAINBOND, Application Management Platform
-// Copyright (C) 2020-2020 Goodrain Co., Ltd.
+// WUTONG, Application Management Platform
+// Copyright (C) 2020-2020 Wutong Co., Ltd.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version. For any non-GPL usage of Rainbond,
-// one or multiple Commercial Licenses authorized by Goodrain Co., Ltd.
+// (at your option) any later version. For any non-GPL usage of Wutong,
+// one or multiple Commercial Licenses authorized by Wutong Co., Ltd.
 // must be obtained first.
 
 // This program is distributed in the hope that it will be useful,
@@ -27,16 +27,16 @@ import (
 	"strings"
 
 	"github.com/docker/docker/client"
-	"github.com/goodrain/rainbond-oam/pkg/export"
-	"github.com/goodrain/rainbond-oam/pkg/ram/v1alpha1"
-	"github.com/goodrain/rainbond-oam/pkg/util"
-	"github.com/goodrain/rainbond-oam/pkg/util/docker"
 	"github.com/sirupsen/logrus"
+	"github.com/wutong-paas/wutong-oam/pkg/export"
+	"github.com/wutong-paas/wutong-oam/pkg/ram/v1alpha1"
+	"github.com/wutong-paas/wutong-oam/pkg/util"
+	"github.com/wutong-paas/wutong-oam/pkg/util/docker"
 )
 
 //AppLocalImport import
 type AppLocalImport interface {
-	Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alpha1.RainbondApplicationConfig, error)
+	Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alpha1.WutongApplicationConfig, error)
 }
 
 //New new
@@ -54,7 +54,7 @@ type ramImport struct {
 	homeDir string
 }
 
-func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alpha1.RainbondApplicationConfig, error) {
+func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alpha1.WutongApplicationConfig, error) {
 	if hubInfo.HubURL == "" {
 		return nil, fmt.Errorf("must define hub url")
 	}
@@ -86,7 +86,7 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 		return nil, fmt.Errorf("Failed to read files in tmp dir %s: %v", r.homeDir, err)
 	}
 	defer metaFile.Close()
-	var ram v1alpha1.RainbondApplicationConfig
+	var ram v1alpha1.WutongApplicationConfig
 	if err := json.NewDecoder(metaFile).Decode(&ram); err != nil {
 		return nil, fmt.Errorf("Failed to read meta file : %v", err)
 	}

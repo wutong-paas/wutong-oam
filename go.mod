@@ -1,4 +1,4 @@
-module github.com/goodrain/rainbond-oam
+module github.com/wutong-paas/wutong-oam
 
 go 1.13
 

@@ -1,11 +1,11 @@
 ## Instructions
 
-The current repository serves as the toolkit repository for Rainbond's OAM support.
+The current repository serves as the toolkit repository for Wutong's OAM support.
 
 ## TODO
 
-- [ ] Convert Rainbond RAM to OAM.
-- [ ] Convert OAM core workload to Rainbond component.
+- [ ] Convert Wutong RAM to OAM.
+- [ ] Convert OAM core workload to Wutong component.
 
 
 
