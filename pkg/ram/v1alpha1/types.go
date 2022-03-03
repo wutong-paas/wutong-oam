@@ -1,11 +1,11 @@
-// RAINBOND, Application Management Platform
-// Copyright (C) 2020-2020 Goodrain Co., Ltd.
+// WUTONG, Application Management Platform
+// Copyright (C) 2020-2020 Wutong Co., Ltd.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version. For any non-GPL usage of Rainbond,
-// one or multiple Commercial Licenses authorized by Goodrain Co., Ltd.
+// (at your option) any later version. For any non-GPL usage of Wutong,
+// one or multiple Commercial Licenses authorized by Wutong Co., Ltd.
 // must be obtained first.
 
 // This program is distributed in the hope that it will be useful,
@@ -22,11 +22,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/goodrain/rainbond-oam/pkg/util"
+	"github.com/wutong-paas/wutong-oam/pkg/util"
 )
 
-//RainbondApplicationConfig store app version template
-type RainbondApplicationConfig struct {
+//WutongApplicationConfig store app version template
+type WutongApplicationConfig struct {
 	AppKeyID           string               `json:"group_key"`
 	AppName            string               `json:"group_name"`
 	AppVersion         string               `json:"group_version"`
@@ -40,7 +40,7 @@ type RainbondApplicationConfig struct {
 }
 
 //HandleNullValue handle null value
-func (s *RainbondApplicationConfig) HandleNullValue() {
+func (s *WutongApplicationConfig) HandleNullValue() {
 	if s.TempleteVersion == "" {
 		s.TempleteVersion = "v2"
 	}
@@ -56,7 +56,7 @@ func (s *RainbondApplicationConfig) HandleNullValue() {
 }
 
 //Validation validation app templete
-func (s *RainbondApplicationConfig) Validation() error {
+func (s *WutongApplicationConfig) Validation() error {
 	if len(s.Components) == 0 {
 		return fmt.Errorf("no app in templete")
 	}
@@ -74,7 +74,7 @@ func (s *RainbondApplicationConfig) Validation() error {
 }
 
 //JSON return json string
-func (s *RainbondApplicationConfig) JSON() string {
+func (s *WutongApplicationConfig) JSON() string {
 	body, _ := json.Marshal(s)
 	return string(body)
 }

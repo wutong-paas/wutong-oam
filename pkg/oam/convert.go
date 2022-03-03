@@ -1,11 +1,11 @@
-// RAINBOND, Application Management Platform
-// Copyright (C) 2020-2020 Goodrain Co., Ltd.
+// WUTONG, Application Management Platform
+// Copyright (C) 2020-2020 Wutong Co., Ltd.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version. For any non-GPL usage of Rainbond,
-// one or multiple Commercial Licenses authorized by Goodrain Co., Ltd.
+// (at your option) any later version. For any non-GPL usage of Wutong,
+// one or multiple Commercial Licenses authorized by Wutong Co., Ltd.
 // must be obtained first.
 
 // This program is distributed in the hope that it will be useful,
@@ -20,14 +20,14 @@ package oam
 
 import (
 	"github.com/crossplane/oam-kubernetes-runtime/apis/core/v1alpha2"
-	"github.com/goodrain/rainbond-oam/pkg/ram/v1alpha1"
+	"github.com/wutong-paas/wutong-oam/pkg/ram/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type builder struct {
 	oamApp *v1alpha2.ApplicationConfiguration
-	ram    v1alpha1.RainbondApplicationConfig
+	ram    v1alpha1.WutongApplicationConfig
 }
 
 //Builder oam application model builder
@@ -44,7 +44,7 @@ type WorkloadBuilder interface {
 }
 
 //NewBuilder new oam model builder
-func NewBuilder(ram v1alpha1.RainbondApplicationConfig) Builder {
+func NewBuilder(ram v1alpha1.WutongApplicationConfig) Builder {
 	var oam v1alpha2.ApplicationConfiguration
 	return &builder{
 		oamApp: &oam,
