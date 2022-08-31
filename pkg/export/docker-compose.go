@@ -83,11 +83,11 @@ func (d *dockerComposeExporter) saveComponents() error {
 	var componentImageNames []string
 	for _, component := range d.ram.Components {
 		componentName := component.ServiceCname
-		componentEnName := dockerCompose.GetServiceName(component.ServiceShareID)
-		serviceDir := fmt.Sprintf("%s/%s", d.exportPath, componentEnName)
-		os.MkdirAll(serviceDir, 0755)
 		volumes := component.ServiceVolumeMapList
 		if volumes != nil && len(volumes) > 0 {
+			componentEnName := dockerCompose.GetServiceName(component.ServiceShareID)
+			serviceDir := fmt.Sprintf("%s/%s", d.exportPath, componentEnName)
+			os.MkdirAll(serviceDir, 0755)
 			for _, v := range volumes {
 				if v.VolumeType == v1alpha1.ConfigFileVolumeType {
 					err := exportComponentConfigFile(serviceDir, v)
@@ -108,14 +108,16 @@ func (d *dockerComposeExporter) saveComponents() error {
 			componentImageNames = append(componentImageNames, localImageName)
 		}
 	}
-	start := time.Now()
-	ctx := context.Background()
-	err := docker.MultiImageSave(ctx, d.client, fmt.Sprintf("%s/component-images.tar", d.exportPath), componentImageNames...)
-	if err != nil {
-		logrus.Errorf("Failed to save image(%v) : %s", componentImageNames, err)
-		return err
+	if len(componentImageNames) > 0 {
+		start := time.Now()
+		ctx := context.Background()
+		err := docker.MultiImageSave(ctx, d.client, fmt.Sprintf("%s/component-images.tar", d.exportPath), componentImageNames...)
+		if err != nil {
+			logrus.Errorf("Failed to save image(%v) : %s", componentImageNames, err)
+			return err
+		}
+		d.logger.Infof("save component images success, Take %s time", time.Now().Sub(start))
 	}
-	d.logger.Infof("save component images success, Take %s time", time.Now().Sub(start))
 	return nil
 }
 
@@ -129,6 +131,9 @@ func (d *dockerComposeExporter) buildDockerComposeYaml() error {
 
 	for _, app := range d.ram.Components {
 		shareImage := app.ShareImage
+		if shareImage == "" {
+			shareImage = app.Image
+		}
 		shareUUID := app.ServiceShareID
 		volumes := dockerCompose.GetServiceVolumes(shareUUID)
 		appName := dockerCompose.GetServiceName(shareUUID)
@@ -224,14 +229,14 @@ func (d *dockerComposeExporter) packaging() (string, error) {
 	return packageName, nil
 }
 
-//DockerComposeYaml -
+// DockerComposeYaml -
 type DockerComposeYaml struct {
 	Version  string                  `yaml:"version"`
 	Volumes  map[string]GlobalVolume `yaml:"volumes,omitempty"`
 	Services map[string]*Service     `yaml:"services,omitempty"`
 }
 
-//Service service
+// Service service
 type Service struct {
 	Image         string            `yaml:"image"`
 	ContainerName string            `yaml:"container_name,omitempty"`
@@ -250,7 +255,7 @@ type Service struct {
 	} `yaml:"logging,omitempty"`
 }
 
-//GlobalVolume -
+// GlobalVolume -
 type GlobalVolume struct {
 	External bool `yaml:"external"`
 }

@@ -89,14 +89,16 @@ func (r *ramExporter) saveComponents() error {
 			componentImageNames = append(componentImageNames, localImageName)
 		}
 	}
-	start := time.Now()
-	ctx := context.Background()
-	err := docker.MultiImageSave(ctx, r.client, fmt.Sprintf("%s/component-images.tar", r.exportPath), componentImageNames...)
-	if err != nil {
-		logrus.Errorf("Failed to save image(%v) : %s", componentImageNames, err)
-		return err
+	if len(componentImageNames) > 0 {
+		start := time.Now()
+		ctx := context.Background()
+		err := docker.MultiImageSave(ctx, r.client, fmt.Sprintf("%s/component-images.tar", r.exportPath), componentImageNames...)
+		if err != nil {
+			logrus.Errorf("Failed to save image(%v) : %s", componentImageNames, err)
+			return err
+		}
+		r.logger.Infof("save component images success, Take %s time", time.Now().Sub(start))
 	}
-	r.logger.Infof("save component images success, Take %s time", time.Now().Sub(start))
 	return nil
 }
 
@@ -113,14 +115,16 @@ func (r *ramExporter) savePlugins() error {
 			pluginImageNames = append(pluginImageNames, localImageName)
 		}
 	}
-	start := time.Now()
-	ctx := context.Background()
-	err := docker.MultiImageSave(ctx, r.client, fmt.Sprintf("%s/plugins-images.tar", r.exportPath), pluginImageNames...)
-	if err != nil {
-		logrus.Errorf("Failed to save image(%v) : %s", pluginImageNames, err)
-		return err
+	if len(pluginImageNames) > 0 {
+		start := time.Now()
+		ctx := context.Background()
+		err := docker.MultiImageSave(ctx, r.client, fmt.Sprintf("%s/plugins-images.tar", r.exportPath), pluginImageNames...)
+		if err != nil {
+			logrus.Errorf("Failed to save image(%v) : %s", pluginImageNames, err)
+			return err
+		}
+		r.logger.Infof("save plugin images success, Take %s time", time.Now().Sub(start))
 	}
-	r.logger.Infof("save plugin images success, Take %s time", time.Now().Sub(start))
 	return nil
 }
 
