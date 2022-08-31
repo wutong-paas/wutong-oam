@@ -112,6 +112,7 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 	}
 	for _, com := range ram.Components {
 		if com.ShareImage == "" {
+			com.ShareImage = com.Image
 			continue
 		}
 		// new hub info
@@ -153,6 +154,7 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 	}
 	for i, plugin := range ram.Plugins {
 		if plugin.ShareImage == "" {
+			plugin.ShareImage = plugin.Image
 			continue
 		}
 		// new hub info
