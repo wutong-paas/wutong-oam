@@ -22,24 +22,26 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/docker/docker/client"
+	"github.com/containerd/containerd"
+	dockercli "github.com/docker/docker/client"
 	"github.com/sirupsen/logrus"
 	"github.com/wutong-paas/wutong-oam/pkg/ram/v1alpha1"
+	"github.com/wutong-paas/wutong-oam/pkg/util/image"
 )
 
-//AppLocalExport export local package
+// AppLocalExport export local package
 type AppLocalExport interface {
 	Export() (*Result, error)
 }
 
-//Result export result
+// Result export result
 type Result struct {
 	PackagePath   string
 	PackageName   string
 	PackageFormat string
 }
 
-//AppFormat app spec format
+// AppFormat app spec format
 type AppFormat string
 
 var (
@@ -47,28 +49,55 @@ var (
 	RAM AppFormat = "ram"
 	//DC -
 	DC AppFormat = "docker-compose"
+	//SC -
+	SLG AppFormat = "slug"
+	//HELM
+	HELM AppFormat = "helm-chart"
 )
 
-//New new exporter
-func New(format AppFormat, homePath string, ram v1alpha1.WutongApplicationConfig, client *client.Client, logger *logrus.Logger) AppLocalExport {
+// New new exporter
+func New(format AppFormat, homePath string, ram v1alpha1.WutongApplicationConfig, containerdCli *containerd.Client, dockerCli *dockercli.Client, logger *logrus.Logger) (AppLocalExport, error) {
+	imageClient, err := image.NewClient(containerdCli, dockerCli)
+	if err != nil {
+		logger.Errorf("create image client error: %v", err)
+		return nil, err
+	}
 	switch format {
 	case RAM:
 		return &ramExporter{
-			logger:     logger,
-			ram:        ram,
-			client:     client,
-			mode:       "offline",
-			homePath:   homePath,
-			exportPath: path.Join(homePath, fmt.Sprintf("%s-%s-ram", ram.AppName, ram.AppVersion)),
-		}
+			logger:      logger,
+			ram:         ram,
+			imageClient: imageClient,
+			mode:        "offline",
+			homePath:    homePath,
+			exportPath:  path.Join(homePath, fmt.Sprintf("%s-%s-ram", ram.AppName, ram.AppVersion)),
+		}, nil
 	case DC:
 		return &dockerComposeExporter{
-			logger:     logger,
-			ram:        ram,
-			client:     client,
-			homePath:   homePath,
-			exportPath: path.Join(homePath, fmt.Sprintf("%s-%s-dockercompose", ram.AppName, ram.AppVersion)),
-		}
+			logger:      logger,
+			ram:         ram,
+			imageClient: imageClient,
+			homePath:    homePath,
+			exportPath:  path.Join(homePath, fmt.Sprintf("%s-%s-dockercompose", ram.AppName, ram.AppVersion)),
+		}, nil
+	case SLG:
+		return &slugExporter{
+			logger:      logger,
+			ram:         ram,
+			imageClient: imageClient,
+			mode:        "offline",
+			homePath:    homePath,
+			exportPath:  path.Join(homePath, fmt.Sprintf("%s-%s-slug", ram.AppName, ram.AppVersion)),
+		}, nil
+	case HELM:
+		return &helmChartExporter{
+			logger:      logger,
+			ram:         ram,
+			imageClient: imageClient,
+			mode:        "offline",
+			homePath:    homePath,
+			exportPath:  path.Join(homePath, fmt.Sprintf("%s-%s-helm", ram.AppName, ram.AppVersion)),
+		}, nil
 	default:
 		panic("not support app format")
 	}

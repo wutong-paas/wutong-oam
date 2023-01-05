@@ -25,7 +25,7 @@ import (
 	"github.com/wutong-paas/wutong-oam/pkg/util"
 )
 
-//WutongApplicationConfig store app version template
+// WutongApplicationConfig store app version template
 type WutongApplicationConfig struct {
 	AppKeyID           string               `json:"group_key"`
 	AppName            string               `json:"group_name"`
@@ -37,9 +37,21 @@ type WutongApplicationConfig struct {
 	IngressHTTPRoutes  []*IngressHTTPRoute  `json:"ingress_http_routes,omitempty"`
 	IngressSreamRoutes []*IngressSreamRoute `json:"ingress_stream_routes,omitempty"`
 	Annotations        map[string]string    `json:"annotations,omitempty"`
+	K8sResources       []*K8sResource       `json:"k8s_resources,omitempty"`
+	GovernanceMode     string               `json:"governance_mode" default:"BUILD_IN_SERVICE_MESH"`
+	HelmChart          map[string]string    `json:"helm_chart,omitempty"`
 }
 
-//HandleNullValue handle null value
+// K8sResource The running environment of an application mainly refers to the k8s resources created under the application
+type K8sResource struct {
+	Name string `json:"name"`
+	// The resource kind is the same as that in k8s cluster
+	Kind string `json:"kind"`
+	// Yaml file for the storage resource
+	Content string `json:"content"`
+}
+
+// HandleNullValue handle null value
 func (s *WutongApplicationConfig) HandleNullValue() {
 	if s.TempleteVersion == "" {
 		s.TempleteVersion = "v2"
@@ -55,7 +67,7 @@ func (s *WutongApplicationConfig) HandleNullValue() {
 	}
 }
 
-//Validation validation app templete
+// Validation validation app templete
 func (s *WutongApplicationConfig) Validation() error {
 	if len(s.Components) == 0 {
 		return fmt.Errorf("no app in templete")
@@ -73,41 +85,41 @@ func (s *WutongApplicationConfig) Validation() error {
 	return nil
 }
 
-//JSON return json string
+// JSON return json string
 func (s *WutongApplicationConfig) JSON() string {
 	body, _ := json.Marshal(s)
 	return string(body)
 }
 
-//DeployType deploy type
+// DeployType deploy type
 // TODO update it stateless_multiple, stateless_singleton
 type DeployType string
 
-//StatelessSingletionDeployType stateless
+// StatelessSingletionDeployType stateless
 var StatelessSingletionDeployType DeployType = "stateless_singleton"
 
-//StatelessMultipleDeployType -
+// StatelessMultipleDeployType -
 var StatelessMultipleDeployType DeployType = "stateless_multiple"
 
-//StateMultipleDeployType -
+// StateMultipleDeployType -
 var StateMultipleDeployType DeployType = "state_multiple"
 
-//StateSingletonDeployType state
+// StateSingletonDeployType state
 var StateSingletonDeployType DeployType = "state_singleton"
 
-//ServiceType 服务类型
+// ServiceType 服务类型
 type ServiceType string
 
-//ApplicationServiceType 普通应用
+// ApplicationServiceType 普通应用
 var ApplicationServiceType = "application"
 
-//HelmChartServiceType helm应用
+// HelmChartServiceType helm应用
 var HelmChartServiceType = "helm-chart"
 
-//ComponentVolumeList volume list
+// ComponentVolumeList volume list
 type ComponentVolumeList []ComponentVolume
 
-//Add add volume
+// Add add volume
 func (s *ComponentVolumeList) Add(volume ComponentVolume) {
 	for _, v := range *s {
 		if v.VolumeName == volume.VolumeName {
@@ -120,7 +132,7 @@ func (s *ComponentVolumeList) Add(volume ComponentVolume) {
 	*s = append(*s, volume)
 }
 
-//Component component model
+// Component component model
 type Component struct {
 	// container limit memory, unit MB
 	Memory                    int                       `json:"memory"`
@@ -158,7 +170,7 @@ type Component struct {
 	Labels                    map[string]string         `json:"labels,omitempty"`
 }
 
-//HandleNullValue 处理null值
+// HandleNullValue 处理null值
 func (s *Component) HandleNullValue() {
 	if s.ServicePluginConfigs == nil {
 		s.ServicePluginConfigs = []ComponentPluginConfig{}
@@ -186,12 +198,12 @@ func (s *Component) HandleNullValue() {
 	}
 }
 
-//Validation -
+// Validation -
 func (s *Component) Validation() error {
 	return nil
 }
 
-//ComponentProbe probe
+// ComponentProbe probe
 type ComponentProbe struct {
 	ID                 int    `json:"ID" bson:"ID"`
 	InitialDelaySecond int    `json:"initial_delay_second"`
@@ -210,7 +222,7 @@ type ComponentProbe struct {
 	Path               string `json:"path"`
 }
 
-//Validation probe validation
+// Validation probe validation
 func (s *ComponentProbe) Validation() error {
 	if s.Port == 0 && s.Cmd == "" {
 		return fmt.Errorf("probe endpoint port is 0")
@@ -218,7 +230,7 @@ func (s *ComponentProbe) Validation() error {
 	return nil
 }
 
-//ImageInfo -
+// ImageInfo -
 type ImageInfo struct {
 	HubPassword string `json:"hub_password"`
 	Namespace   string `json:"namespace"`
@@ -227,7 +239,7 @@ type ImageInfo struct {
 	IsTrust     bool   `json:"is_trust"`
 }
 
-//ComponentPort port
+// ComponentPort port
 type ComponentPort struct {
 	PortAlias     string `json:"port_alias"`
 	Protocol      string `json:"protocol"`
@@ -237,7 +249,7 @@ type ComponentPort struct {
 	IsInner       bool   `json:"is_inner_service"`
 }
 
-//ComponentEnv env
+// ComponentEnv env
 type ComponentEnv struct {
 	AttrName  string `json:"attr_name"`
 	Name      string `json:"name"`
@@ -247,8 +259,8 @@ type ComponentEnv struct {
 	ContainerPort int32 `json:"container_port"`
 }
 
-//ComponentExtendMethodRule -
-//服务伸缩规则，目前仅包含手动伸缩的规则
+// ComponentExtendMethodRule -
+// 服务伸缩规则，目前仅包含手动伸缩的规则
 type ComponentExtendMethodRule struct {
 	MinNode    int `json:"min_node"`
 	StepMemory int `json:"step_memory"`
@@ -260,7 +272,7 @@ type ComponentExtendMethodRule struct {
 	InitMemory int `json:"init_memory"`
 }
 
-//DefaultExtendMethodRule default Scaling rules
+// DefaultExtendMethodRule default Scaling rules
 func DefaultExtendMethodRule() ComponentExtendMethodRule {
 	return ComponentExtendMethodRule{
 		MinNode:    1,
@@ -272,7 +284,7 @@ func DefaultExtendMethodRule() ComponentExtendMethodRule {
 	}
 }
 
-//Plugin  templete plugin model
+// Plugin  templete plugin model
 type Plugin struct {
 	Origin        string              `json:"origin"`
 	CodeRepo      string              `json:"code_repo"`
@@ -292,19 +304,19 @@ type Plugin struct {
 	BuildVersion  string              `json:"build_version"`
 }
 
-//Validation validation app templete
+// Validation validation app templete
 func (s *Plugin) Validation() error {
 	return nil
 }
 
-//HandleNullValue 处理null值数据
+// HandleNullValue 处理null值数据
 func (s *Plugin) HandleNullValue() {
 	if s.ConfigGroups == nil {
 		s.ConfigGroups = []PluginConfigGroup{}
 	}
 }
 
-//PluginConfigGroup 插件配置定义
+// PluginConfigGroup 插件配置定义
 type PluginConfigGroup struct {
 	ConfigName      string                    `json:"config_name"`
 	Options         []PluginConfigGroupOption `json:"options,omitempty"`
@@ -314,7 +326,7 @@ type PluginConfigGroup struct {
 	ServiceMetaType string                    `json:"service_meta_type"`
 }
 
-//PluginConfigGroupOption 插件配置项定义
+// PluginConfigGroupOption 插件配置项定义
 type PluginConfigGroupOption struct {
 	AttrValue        string `json:"attr_alt_value"`
 	AttrType         string `json:"attr_type"`
@@ -328,31 +340,31 @@ type PluginConfigGroupOption struct {
 	Protocol         string `json:"protocol"`
 }
 
-//ComponentShareVolume 共享其他服务存储信息
+// ComponentShareVolume 共享其他服务存储信息
 type ComponentShareVolume struct {
 	VolumeName       string `json:"mnt_name"`
 	VolumeMountDir   string `json:"mnt_dir"`
 	ShareServiceUUID string `json:"service_share_uuid"`
 }
 
-//ComponentDep 服务依赖关系数据
+// ComponentDep 服务依赖关系数据
 type ComponentDep struct {
 	DepServiceKey string `json:"dep_service_key"`
 }
 
-//VolumeType volume type
+// VolumeType volume type
 type VolumeType string
 
-//ShareFileVolumeType 共享文件存储
+// ShareFileVolumeType 共享文件存储
 var ShareFileVolumeType VolumeType = "share-file"
 
-//LocalVolumeType 本地文件存储
+// LocalVolumeType 本地文件存储
 var LocalVolumeType VolumeType = "local"
 
-//MemoryFSVolumeType 内存文件存储
+// MemoryFSVolumeType 内存文件存储
 var MemoryFSVolumeType VolumeType = "memoryfs"
 
-//ConfigFileVolumeType configuration file volume type
+// ConfigFileVolumeType configuration file volume type
 var ConfigFileVolumeType VolumeType = "config-file"
 
 func (vt VolumeType) String() string {
@@ -371,7 +383,7 @@ var RWXAccessMode AccessMode = "RWX"
 // ROXAccessMode only read
 var ROXAccessMode AccessMode = "ROX"
 
-//ComponentVolume volume config
+// ComponentVolume volume config
 type ComponentVolume struct {
 	VolumeName      string     `json:"volume_name"`
 	FileConent      string     `json:"file_content"`
@@ -383,7 +395,7 @@ type ComponentVolume struct {
 	Mode            *int       `json:"mode,omitempty"`
 }
 
-//ComponentPluginConfig 服务插件配置数据
+// ComponentPluginConfig 服务插件配置数据
 type ComponentPluginConfig struct {
 	CreateTime      string                   `json:"create_time"`
 	PluginStatus    bool                     `json:"plugin_status"`
@@ -398,7 +410,7 @@ type ComponentPluginConfig struct {
 	BuildVersion string `json:"build_version"`
 }
 
-//ComponentMonitor component monitor plugin
+// ComponentMonitor component monitor plugin
 type ComponentMonitor struct {
 	Name            string `json:"name"`
 	ServiceShowName string `json:"service_show_name"`
@@ -416,7 +428,7 @@ type ComponentGraph struct {
 	Sequence    int    `json:"sequence"`
 }
 
-//AppConfigGroup app config groups
+// AppConfigGroup app config groups
 type AppConfigGroup struct {
 	Name          string            `json:"name"`
 	InjectionType string            `json:"injection_type"`
@@ -424,7 +436,7 @@ type AppConfigGroup struct {
 	ComponentKeys []string          `json:"component_keys"`
 }
 
-//IngressHTTPRoute ingress http route
+// IngressHTTPRoute ingress http route
 type IngressHTTPRoute struct {
 	DefaultDomain        bool              `json:"default_domain"`
 	Location             string            `json:"location"`
@@ -444,14 +456,14 @@ type IngressHTTPRoute struct {
 	TargetComponent
 }
 
-//IngressSreamRoute ingress stream route
+// IngressSreamRoute ingress stream route
 type IngressSreamRoute struct {
 	Protocol          string `json:"protocol"`
 	ConnectionTimeout int    `json:"connection_timeout"`
 	TargetComponent
 }
 
-//TargetComponent target component
+// TargetComponent target component
 type TargetComponent struct {
 	ComponentKey string `json:"component_key"`
 	Port         uint32 `json:"port"`
@@ -462,4 +474,28 @@ type Endpoints struct {
 	Endpoints     string `json:"endpoints_info"`
 	ServiceCname  string `json:"service_cname"`
 	EndpointsType string `json:"endpoints_type"`
+}
+
+// ComponentK8sAttribute k8s component attribute.
+type ComponentK8sAttribute struct {
+	ComponentID string `json:"component_id"`
+
+	// Name Define the attribute name, which is currently supported
+	// [nodeSelector/labels/tolerations/volumes/serviceAccountName/privileged/affinity]
+	// The field name should be the same as that in the K8s resource yaml file.
+	Name string `json:"name"`
+
+	// The field type defines how the attribute is stored. Currently, `json/yaml/string` are supported
+	SaveType string `json:"save_type"`
+
+	// Define the attribute value, which is stored in the database.
+	// The value is stored in the database in the form of `json/yaml/string`.
+	AttributeValue string `json:"attribute_value"`
+}
+
+// Manifest Image Packaging Manifest.
+type Manifest struct {
+	Config   string   `json:"Config"`
+	RepoTags []string `json:"RepoTags"`
+	Layers   []string `json:"Layers"`
 }

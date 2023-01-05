@@ -93,7 +93,7 @@ func (c *containerWorkloadBuilder) buildContainers() []v1alpha2.Container {
 	return containers
 }
 
-//TODO: share volume
+// TODO: share volume
 func (c *containerWorkloadBuilder) buildVolumes(volumes v1alpha1.ComponentVolumeList, shareVolume []v1alpha1.ComponentShareVolume) (re []v1alpha2.VolumeResource) {
 	for _, volume := range volumes {
 		if volume.VolumeType == v1alpha1.ConfigFileVolumeType {
@@ -114,7 +114,7 @@ func (c *containerWorkloadBuilder) buildVolumes(volumes v1alpha1.ComponentVolume
 	return
 }
 
-//TODO: share config file
+// TODO: share config file
 func (c *containerWorkloadBuilder) buildConfigFile(volumes v1alpha1.ComponentVolumeList) (re []v1alpha2.ContainerConfigFile) {
 	for _, volume := range volumes {
 		if volume.VolumeType != v1alpha1.ConfigFileVolumeType {
@@ -151,7 +151,7 @@ func (c *containerWorkloadBuilder) buildEnv(envs, connect []v1alpha1.ComponentEn
 	return
 }
 
-//TODO: create service
+// TODO: create service
 func (c *containerWorkloadBuilder) buildPorts(ports []v1alpha1.ComponentPort) (re []v1alpha2.ContainerPort) {
 	for _, p := range ports {
 		re = append(re, v1alpha2.ContainerPort{
@@ -163,7 +163,7 @@ func (c *containerWorkloadBuilder) buildPorts(ports []v1alpha1.ComponentPort) (r
 	return
 }
 
-//TODO: build secret
+// TODO: build secret
 func (c *containerWorkloadBuilder) buildImagePullSecret(info v1alpha1.ImageInfo) *string {
 	var secret string
 	return &secret

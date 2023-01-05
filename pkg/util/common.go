@@ -19,13 +19,15 @@
 package util
 
 import (
+	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -33,14 +35,14 @@ import (
 	"github.com/wutong-paas/wutong-oam/pkg/util/zip"
 )
 
-//NewUUID new uuid string
+// NewUUID new uuid string
 func NewUUID() string {
 	return strings.Replace(uuid.New().String(), "-", "", -1)
 }
 
 var reg = regexp.MustCompile(`(?U)\$\{.*\}`)
 
-//ParseVariable parse and replace variable in source str
+// ParseVariable parse and replace variable in source str
 func ParseVariable(source string, configs map[string]string) string {
 	resultKey := reg.FindAllString(source, -1)
 	for _, sourcekey := range resultKey {
@@ -71,7 +73,7 @@ func getVariableKey(source string) (key, value string) {
 	return k, ""
 }
 
-//Unzip archive file to target dir
+// Unzip archive file to target dir
 func Unzip(archive, target string) error {
 	reader, err := zip.OpenDirectReader(archive)
 	if err != nil {
@@ -132,7 +134,7 @@ func Unzip(archive, target string) error {
 	return nil
 }
 
-//Untar tar -zxvf
+// Untar tar -zxvf
 func Untar(archive, target string) error {
 	cmd := exec.Command("tar", "-xzf", archive, "-C", target)
 	if err := cmd.Run(); err != nil {
@@ -141,10 +143,19 @@ func Untar(archive, target string) error {
 	return nil
 }
 
-//GetFileList -
+// UnImagetar image-tar
+func UnImagetar(archive, target string) error {
+	cmd := exec.Command("tar", "-xf", archive, "-C", target)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetFileList -
 func GetFileList(dirpath string, level int) ([]string, error) {
 	var dirlist []string
-	list, err := ioutil.ReadDir(dirpath)
+	list, err := os.ReadDir(dirpath)
 	if err != nil {
 		return nil, err
 	}
@@ -160,4 +171,74 @@ func GetFileList(dirpath string, level int) ([]string, error) {
 		}
 	}
 	return dirlist, nil
+}
+
+// ReadJson -
+func ReadJson(filePath string) (result string) {
+	file, err := os.Open(filePath)
+	defer file.Close()
+	if err != nil {
+		fmt.Println("ERROR:", err)
+	}
+	buf := bufio.NewReader(file)
+	for {
+		s, err := buf.ReadString('\n')
+		result += s
+		if err != nil {
+			if err == io.EOF {
+				fmt.Println("Read is ok")
+				break
+			} else {
+				fmt.Println("ERROR:", err)
+				return
+			}
+		}
+	}
+	return result
+}
+
+// FormatPath format path
+func FormatPath(s string) string {
+	log.Println("runtime.GOOS:", runtime.GOOS)
+	switch runtime.GOOS {
+	case "windows":
+		return strings.Replace(s, "/", "\\", -1)
+	case "darwin", "linux":
+		return strings.Replace(s, "\\", "/", -1)
+	default:
+		fmt.Println("only support linux,windows,darwin, but os is " + runtime.GOOS)
+		return s
+	}
+}
+
+// CopyDir copy dir
+func CopyDir(src string, dest string) error {
+	_, err := os.Stat(dest)
+	if err != nil {
+		if !os.IsExist(err) {
+			err := os.MkdirAll(dest, 0755)
+			if err != nil {
+				fmt.Println("make and copy dir error", err)
+				return err
+			}
+		}
+	}
+	src = FormatPath(src)
+	dest = FormatPath(dest)
+
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("xcopy", src, dest, "/I", "/E")
+	case "darwin", "linux":
+		cmd = exec.Command("cp", "-R", src, dest)
+	}
+	outPut, err := cmd.Output()
+	if err != nil {
+		fmt.Printf("Output error: %s\n", err.Error())
+		return err
+	}
+	fmt.Println(outPut)
+	return nil
 }

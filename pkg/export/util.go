@@ -22,17 +22,18 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
-	"github.com/docker/docker/client"
 	"github.com/mozillazg/go-pinyin"
 	"github.com/sirupsen/logrus"
 	"github.com/wutong-paas/wutong-oam/pkg/ram/v1alpha1"
-	"github.com/wutong-paas/wutong-oam/pkg/util/docker"
+	"github.com/wutong-paas/wutong-oam/pkg/util/image"
 )
 
 // [a-zA-Z0-9._-]
@@ -91,26 +92,6 @@ func unicode2zh(uText string) (context string) {
 	return context
 }
 
-func pullImage(client *client.Client, component *v1alpha1.Component, log *logrus.Logger) (string, error) {
-	// docker pull image-name
-	_, err := docker.ImagePull(client, component.ShareImage, component.AppImage.HubUser, component.AppImage.HubPassword, 30)
-	if err != nil {
-		log.Errorf("plugin image %s by user %s failure %s", component.ShareImage, component.AppImage.HubUser, err.Error())
-		return "", err
-	}
-	return component.ShareImage, nil
-}
-
-func pullPluginImage(client *client.Client, plugin *v1alpha1.Plugin, log *logrus.Logger) (string, error) {
-	// docker pull image-name
-	_, err := docker.ImagePull(client, plugin.ShareImage, plugin.PluginImage.HubUser, plugin.PluginImage.HubPassword, 30)
-	if err != nil {
-		log.Errorf("plugin image %s by user %s failure %s", plugin.ShareImage, plugin.PluginImage.HubUser, err.Error())
-		return "", err
-	}
-	return plugin.ShareImage, nil
-}
-
 // GetMemoryType returns the memory type based on the given memory size.
 func GetMemoryType(memorySize int) string {
 	memoryType := "small"
@@ -133,7 +114,7 @@ var memoryLabels = map[int]string{
 	65536: "64xlarge",
 }
 
-//PrepareExportDir -
+// PrepareExportDir -
 func PrepareExportDir(exportPath string) error {
 	os.RemoveAll(exportPath)
 	return os.MkdirAll(exportPath, 0755)
@@ -145,4 +126,60 @@ func exportComponentConfigFile(serviceDir string, v v1alpha1.ComponentVolume) er
 	dir := path.Dir(filename)
 	os.MkdirAll(dir, 0755)
 	return ioutil.WriteFile(filename, []byte(v.FileConent), 0644)
+}
+
+func SaveComponents(ram v1alpha1.WutongApplicationConfig, imageClient image.Client, exportPath string, logger *logrus.Logger) error {
+	var componentImageNames []string
+	for _, component := range ram.Components {
+		componentName := unicode2zh(component.ServiceCname)
+		if component.ShareImage != "" {
+			// app is image type
+			_, err := imageClient.ImagePull(component.ShareImage, component.AppImage.HubUser, component.AppImage.HubPassword, 30)
+			if err != nil {
+				return err
+			}
+			logger.Infof("pull component %s image success", componentName)
+			componentImageNames = append(componentImageNames, component.ShareImage)
+		}
+	}
+	start := time.Now()
+	err := imageClient.ImageSave(fmt.Sprintf("%s/component-images.tar", exportPath), componentImageNames)
+	if err != nil {
+		logrus.Errorf("Failed to save image(%v) : %s", componentImageNames, err)
+		return err
+	}
+	logger.Infof("save component images success, Take %s time", time.Now().Sub(start))
+	return nil
+}
+
+func SavePlugins(ram v1alpha1.WutongApplicationConfig, imageClient image.Client, exportPath string, logger *logrus.Logger) error {
+	var pluginImageNames []string
+	for _, plugin := range ram.Plugins {
+		if plugin.ShareImage != "" {
+			// app is image type
+			_, err := imageClient.ImagePull(plugin.ShareImage, plugin.PluginImage.HubUser, plugin.PluginImage.HubPassword, 30)
+			if err != nil {
+				return err
+			}
+			logger.Infof("pull plugin %s image success", plugin.PluginName)
+			pluginImageNames = append(pluginImageNames, plugin.ShareImage)
+		}
+	}
+	start := time.Now()
+	err := imageClient.ImageSave(fmt.Sprintf("%s/plugin-images.tar", exportPath), pluginImageNames)
+	if err != nil {
+		logrus.Errorf("Failed to save image(%v) : %s", pluginImageNames, err)
+		return err
+	}
+	logger.Infof("save plugin images success, Take %s time", time.Now().Sub(start))
+	return nil
+}
+
+func Packaging(packageName, homePath, exportPath string) (string, error) {
+	cmd := exec.Command("tar", "-czf", path.Join(homePath, packageName), path.Base(exportPath))
+	cmd.Dir = homePath
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return packageName, nil
 }

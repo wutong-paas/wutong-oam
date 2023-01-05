@@ -19,27 +19,25 @@
 package export
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os/exec"
 	"path"
-	"time"
 
 	"github.com/docker/docker/client"
 	"github.com/sirupsen/logrus"
 	"github.com/wutong-paas/wutong-oam/pkg/ram/v1alpha1"
-	"github.com/wutong-paas/wutong-oam/pkg/util/docker"
+	"github.com/wutong-paas/wutong-oam/pkg/util/image"
 )
 
 type ramExporter struct {
-	logger     *logrus.Logger
-	ram        v1alpha1.WutongApplicationConfig
-	client     *client.Client
-	mode       string
-	homePath   string
-	exportPath string
+	logger      *logrus.Logger
+	ram         v1alpha1.WutongApplicationConfig
+	client      *client.Client
+	imageClient image.Client
+	mode        string
+	homePath    string
+	exportPath  string
 }
 
 func (r *ramExporter) Export() (*Result, error) {
@@ -52,12 +50,12 @@ func (r *ramExporter) Export() (*Result, error) {
 	r.logger.Infof("success prepare export dir")
 	if r.mode == "offline" {
 		// Save components attachments
-		if err := r.saveComponents(); err != nil {
+		if err := SaveComponents(r.ram, r.imageClient, r.exportPath, r.logger); err != nil {
 			return nil, err
 		}
 		r.logger.Infof("success save components")
 		// Save plugin attachments
-		if err := r.savePlugins(); err != nil {
+		if err := SavePlugins(r.ram, r.imageClient, r.exportPath, r.logger); err != nil {
 			return nil, err
 		}
 	}
@@ -67,65 +65,15 @@ func (r *ramExporter) Export() (*Result, error) {
 	}
 	r.logger.Infof("success write ram spec file")
 	// packaging
-	name, err := r.packaging()
+	packageName := fmt.Sprintf("%s-%s-ram.tar.gz", r.ram.AppName, r.ram.AppVersion)
+	name, err := Packaging(packageName, r.homePath, r.exportPath)
 	if err != nil {
+		err = fmt.Errorf("Failed to package app %s: %s ", packageName, err.Error())
+		r.logger.Error(err)
 		return nil, err
 	}
 	r.logger.Infof("success export app " + r.ram.AppName)
 	return &Result{PackagePath: path.Join(r.homePath, name), PackageName: name}, nil
-}
-
-func (r *ramExporter) saveComponents() error {
-	var componentImageNames []string
-	for _, component := range r.ram.Components {
-		componentName := unicode2zh(component.ServiceCname)
-		if component.ShareImage != "" {
-			// app is image type
-			localImageName, err := pullImage(r.client, component, r.logger)
-			if err != nil {
-				return err
-			}
-			r.logger.Infof("pull component %s image success", componentName)
-			componentImageNames = append(componentImageNames, localImageName)
-		}
-	}
-	if len(componentImageNames) > 0 {
-		start := time.Now()
-		ctx := context.Background()
-		err := docker.MultiImageSave(ctx, r.client, fmt.Sprintf("%s/component-images.tar", r.exportPath), componentImageNames...)
-		if err != nil {
-			logrus.Errorf("Failed to save image(%v) : %s", componentImageNames, err)
-			return err
-		}
-		r.logger.Infof("save component images success, Take %s time", time.Now().Sub(start))
-	}
-	return nil
-}
-
-func (r *ramExporter) savePlugins() error {
-	var pluginImageNames []string
-	for _, plugin := range r.ram.Plugins {
-		if plugin.ShareImage != "" {
-			// app is image type
-			localImageName, err := pullPluginImage(r.client, plugin, r.logger)
-			if err != nil {
-				return err
-			}
-			r.logger.Infof("pull plugin %s image success", plugin.PluginName)
-			pluginImageNames = append(pluginImageNames, localImageName)
-		}
-	}
-	if len(pluginImageNames) > 0 {
-		start := time.Now()
-		ctx := context.Background()
-		err := docker.MultiImageSave(ctx, r.client, fmt.Sprintf("%s/plugins-images.tar", r.exportPath), pluginImageNames...)
-		if err != nil {
-			logrus.Errorf("Failed to save image(%v) : %s", pluginImageNames, err)
-			return err
-		}
-		r.logger.Infof("save plugin images success, Take %s time", time.Now().Sub(start))
-	}
-	return nil
 }
 
 func (r *ramExporter) writeMetaFile() error {
@@ -146,16 +94,4 @@ func (r *ramExporter) writeMetaFile() error {
 		return fmt.Errorf("write ram app meta config file failure %s", err.Error())
 	}
 	return nil
-}
-func (r *ramExporter) packaging() (string, error) {
-	packageName := fmt.Sprintf("%s-%s-ram.tar.gz", r.ram.AppName, r.ram.AppVersion)
-
-	cmd := exec.Command("tar", "-czf", path.Join(r.homePath, packageName), path.Base(r.exportPath))
-	cmd.Dir = r.homePath
-	if err := cmd.Run(); err != nil {
-		err = fmt.Errorf("Failed to package app %s: %s ", packageName, err.Error())
-		r.logger.Error(err)
-		return "", err
-	}
-	return packageName, nil
 }

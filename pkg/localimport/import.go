@@ -26,12 +26,14 @@ import (
 	"path"
 	"strings"
 
-	"github.com/docker/docker/client"
+	"github.com/containerd/containerd"
+	dockercli "github.com/docker/docker/client"
 	"github.com/sirupsen/logrus"
 	"github.com/wutong-paas/wutong-oam/pkg/export"
 	"github.com/wutong-paas/wutong-oam/pkg/ram/v1alpha1"
 	"github.com/wutong-paas/wutong-oam/pkg/util"
 	"github.com/wutong-paas/wutong-oam/pkg/util/docker"
+	"github.com/wutong-paas/wutong-oam/pkg/util/image"
 )
 
 // AppLocalImport import
@@ -40,18 +42,23 @@ type AppLocalImport interface {
 }
 
 // New new
-func New(logger *logrus.Logger, client *client.Client, homeDir string) AppLocalImport {
-	return &ramImport{
-		logger:  logger,
-		client:  client,
-		homeDir: homeDir,
+func New(logger *logrus.Logger, containerdCli *containerd.Client, dockerCli *dockercli.Client, homeDir string) (AppLocalImport, error) {
+	imageClient, err := image.NewClient(containerdCli, dockerCli)
+	if err != nil {
+		logger.Errorf("create image client error: %v", err)
+		return nil, err
 	}
+	return &ramImport{
+		logger:      logger,
+		imageClient: imageClient,
+		homeDir:     homeDir,
+	}, nil
 }
 
 type ramImport struct {
-	logger  *logrus.Logger
-	client  *client.Client
-	homeDir string
+	logger      *logrus.Logger
+	imageClient image.Client
+	homeDir     string
 }
 
 func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alpha1.WutongApplicationConfig, error) {
@@ -104,24 +111,25 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 	allfiles := append(l1, l2...)
 	for _, f := range allfiles {
 		if strings.HasSuffix(f, ".tar") {
-			if err := docker.ImageLoad(r.client, f); err != nil {
-				return nil, fmt.Errorf("load image from file %s failure %s", f, err.Error())
+			err = r.imageClient.ImageLoad(f)
+			if err != nil {
+				if err.Error() != "unrecognized image format" {
+					return nil, err
+				}
+				logrus.Warningf("docker image tar is empty，so unrecognized image format")
 			}
 			r.logger.Infof("load image from file %s success", f)
 		}
 	}
 	for _, com := range ram.Components {
-		if com.ShareImage == "" {
-			com.ShareImage = com.Image
-			continue
-		}
 		// new hub info
 		newImageName, err := docker.NewImageName(com.ShareImage, hubInfo)
 		if err != nil {
 			r.logger.Errorf("parse image failure %s", err.Error())
 			return nil, err
 		}
-		if err := docker.ImageTag(r.client, com.ShareImage, newImageName, 2); err != nil {
+		err = r.imageClient.ImageTag(com.ShareImage, newImageName, 2)
+		if err != nil {
 			//Compatibility History Version
 			if strings.Contains(err.Error(), "No such image") {
 				var saveImage string
@@ -129,14 +137,7 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 				if err != nil {
 					return nil, err
 				}
-				err = docker.ImageTag(r.client, saveImage, newImageName, 2)
-				if err != nil && strings.Contains(err.Error(), "No such image") {
-					saveImage, err = docker.GetOldSaveImageName(com.ShareImage, true)
-					if err != nil {
-						return nil, err
-					}
-					err = docker.ImageTag(r.client, saveImage, newImageName, 2)
-				}
+				err = r.imageClient.ImageTag(saveImage, newImageName, 2)
 			}
 			if err != nil {
 				logrus.Errorf("change image %s tag to %s failure %s", com.ShareImage, newImageName, err.Error())
@@ -144,7 +145,7 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 			}
 		}
 		r.logger.Infof("start push image %s", newImageName)
-		if err := docker.ImagePush(r.client, newImageName, hubInfo.HubUser, hubInfo.HubPassword, 20); err != nil {
+		if err := r.imageClient.ImagePush(newImageName, hubInfo.HubUser, hubInfo.HubPassword, 20); err != nil {
 			logrus.Errorf("push image %s failure %s", newImageName, err.Error())
 			return nil, err
 		}
@@ -153,17 +154,14 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 		com.ShareImage = newImageName
 	}
 	for i, plugin := range ram.Plugins {
-		if plugin.ShareImage == "" {
-			plugin.ShareImage = plugin.Image
-			continue
-		}
 		// new hub info
 		newImageName, err := docker.NewImageName(plugin.ShareImage, hubInfo)
 		if err != nil {
 			r.logger.Errorf("parse image failure %s", err.Error())
 			return nil, err
 		}
-		if err := docker.ImageTag(r.client, plugin.ShareImage, newImageName, 2); err != nil {
+		err = r.imageClient.ImageTag(plugin.ShareImage, newImageName, 2)
+		if err != nil {
 			//Compatibility History Version
 			if strings.Contains(err.Error(), "No such image") {
 				var saveImage string
@@ -171,14 +169,7 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 				if err != nil {
 					return nil, err
 				}
-				err = docker.ImageTag(r.client, saveImage, newImageName, 2)
-				if err != nil && strings.Contains(err.Error(), "No such image") {
-					saveImage, err = docker.GetOldSaveImageName(plugin.ShareImage, true)
-					if err != nil {
-						return nil, err
-					}
-					err = docker.ImageTag(r.client, saveImage, newImageName, 2)
-				}
+				err = r.imageClient.ImageTag(saveImage, newImageName, 2)
 			}
 			if err != nil {
 				logrus.Errorf("change image %s tag to %s failure %s", plugin.ShareImage, newImageName, err.Error())
@@ -186,7 +177,7 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 			}
 		}
 		r.logger.Infof("start push image %s", newImageName)
-		if err := docker.ImagePush(r.client, newImageName, hubInfo.HubUser, hubInfo.HubPassword, 20); err != nil {
+		if err := r.imageClient.ImagePush(newImageName, hubInfo.HubUser, hubInfo.HubPassword, 20); err != nil {
 			logrus.Errorf("push image %s failure %s", newImageName, err.Error())
 			return nil, err
 		}

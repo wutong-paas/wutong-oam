@@ -19,28 +19,25 @@
 package export
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path"
 	"time"
 
-	"github.com/docker/docker/client"
 	"github.com/sirupsen/logrus"
 	"github.com/wutong-paas/wutong-oam/pkg/ram/v1alpha1"
 	"github.com/wutong-paas/wutong-oam/pkg/util"
-	"github.com/wutong-paas/wutong-oam/pkg/util/docker"
+	"github.com/wutong-paas/wutong-oam/pkg/util/image"
 	"gopkg.in/yaml.v2"
 )
 
 type dockerComposeExporter struct {
-	logger     *logrus.Logger
-	ram        v1alpha1.WutongApplicationConfig
-	client     *client.Client
-	homePath   string
-	exportPath string
+	logger      *logrus.Logger
+	ram         v1alpha1.WutongApplicationConfig
+	imageClient image.Client
+	homePath    string
+	exportPath  string
 }
 
 func (d *dockerComposeExporter) Export() (*Result, error) {
@@ -69,8 +66,11 @@ func (d *dockerComposeExporter) Export() (*Result, error) {
 	}
 	d.logger.Infof("success build start script")
 	// packaging
-	name, err := d.packaging()
+	packageName := fmt.Sprintf("%s-%s-dockercompose.tar.gz", d.ram.AppName, d.ram.AppVersion)
+	name, err := Packaging(packageName, d.homePath, d.exportPath)
 	if err != nil {
+		err = fmt.Errorf("Failed to package app %s: %s ", packageName, err.Error())
+		d.logger.Error(err)
 		return nil, err
 	}
 	d.logger.Infof("success export app " + d.ram.AppName)
@@ -100,18 +100,17 @@ func (d *dockerComposeExporter) saveComponents() error {
 		}
 		if component.ShareImage != "" {
 			// app is image type
-			localImageName, err := pullImage(d.client, component, d.logger)
+			_, err := d.imageClient.ImagePull(component.ShareImage, component.AppImage.HubUser, component.AppImage.HubPassword, 30)
 			if err != nil {
 				return err
 			}
 			d.logger.Infof("pull component %s image success", componentName)
-			componentImageNames = append(componentImageNames, localImageName)
+			componentImageNames = append(componentImageNames, component.ShareImage)
 		}
 	}
 	if len(componentImageNames) > 0 {
 		start := time.Now()
-		ctx := context.Background()
-		err := docker.MultiImageSave(ctx, d.client, fmt.Sprintf("%s/component-images.tar", d.exportPath), componentImageNames...)
+		err := d.imageClient.ImageSave(fmt.Sprintf("%s/component-images.tar", d.exportPath), componentImageNames)
 		if err != nil {
 			logrus.Errorf("Failed to save image(%v) : %s", componentImageNames, err)
 			return err
@@ -214,19 +213,6 @@ func (d *dockerComposeExporter) buildStartScript() error {
 		return err
 	}
 	return nil
-}
-
-func (d *dockerComposeExporter) packaging() (string, error) {
-	packageName := fmt.Sprintf("%s-%s-dockercompose.tar.gz", d.ram.AppName, d.ram.AppVersion)
-
-	cmd := exec.Command("tar", "-czf", path.Join(d.homePath, packageName), path.Base(d.exportPath))
-	cmd.Dir = d.homePath
-	if err := cmd.Run(); err != nil {
-		err = fmt.Errorf("Failed to package app %s: %s ", packageName, err.Error())
-		d.logger.Error(err)
-		return "", err
-	}
-	return packageName, nil
 }
 
 // DockerComposeYaml -
