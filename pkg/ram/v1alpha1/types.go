@@ -243,7 +243,7 @@ type ImageInfo struct {
 type ComponentPort struct {
 	PortAlias     string `json:"port_alias"`
 	Protocol      string `json:"protocol"`
-	TenantID      string `json:"tenant_id"`
+	TenantEnvID   string `json:"tenant_env_id"`
 	ContainerPort int    `json:"container_port"`
 	IsOuter       bool   `json:"is_outer_service"`
 	IsInner       bool   `json:"is_inner_service"`
