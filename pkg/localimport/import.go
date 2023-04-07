@@ -122,6 +122,9 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 		}
 	}
 	for _, com := range ram.Components {
+		if com.ShareImage == "" {
+			com.ShareImage = com.Image
+		}
 		// new hub info
 		newImageName, err := docker.NewImageName(com.ShareImage, hubInfo)
 		if err != nil {
@@ -154,6 +157,9 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 		com.ShareImage = newImageName
 	}
 	for i, plugin := range ram.Plugins {
+		if plugin.ShareImage == "" {
+			plugin.ShareImage = plugin.Image
+		}
 		// new hub info
 		newImageName, err := docker.NewImageName(plugin.ShareImage, hubInfo)
 		if err != nil {
