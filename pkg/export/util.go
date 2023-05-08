@@ -47,10 +47,16 @@ func composeName(uText string) string {
 			res += strings.Join(pinyin.LazyConvert(string(runeValue), nil), "")
 			continue
 		}
-		matched, err := regexp.Match("[a-zA-Z0-9._-]", []byte{byte(runeValue)})
+		// matched, err := regexp.Match("[a-zA-Z0-9._-]", []byte{byte(runeValue)})
+		// if err != nil {
+		// 	logrus.Warningf("check if %s meets [a-zA-Z0-9._-]: %v", string(runeValue), err)
+		// }
+		r, err := regexp.Compile("[a-zA-Z0-9._-]")
 		if err != nil {
-			logrus.Warningf("check if %s meets [a-zA-Z0-9._-]: %v", string(runeValue), err)
+			logrus.Warningf("compile [a-zA-Z0-9._-] regexp failure: %v", err)
 		}
+		matched := r.Match([]byte{byte(runeValue)})
+
 		if !matched {
 			res += "_"
 			continue
@@ -128,7 +134,7 @@ func exportComponentConfigFile(serviceDir string, v v1alpha1.ComponentVolume) er
 	return ioutil.WriteFile(filename, []byte(v.FileConent), 0644)
 }
 
-func SaveComponents(ram v1alpha1.WutongApplicationConfig, imageClient image.Client, exportPath string, logger *logrus.Logger) error {
+func SaveComponents(ram v1alpha1.WutongApplicationConfig, imageClient image.Client, exportPath string, logger *logrus.Logger, dependentImages []string) error {
 	var componentImageNames []string
 	for _, component := range ram.Components {
 		componentName := unicode2zh(component.ServiceCname)
@@ -143,12 +149,18 @@ func SaveComponents(ram v1alpha1.WutongApplicationConfig, imageClient image.Clie
 		}
 	}
 	start := time.Now()
+	for _, dependentImage := range dependentImages {
+		if dependentImage == "" {
+			continue
+		}
+		componentImageNames = append(componentImageNames, dependentImage)
+	}
 	err := imageClient.ImageSave(fmt.Sprintf("%s/component-images.tar", exportPath), componentImageNames)
 	if err != nil {
 		logrus.Errorf("Failed to save image(%v) : %s", componentImageNames, err)
 		return err
 	}
-	logger.Infof("save component images success, Take %s time", time.Now().Sub(start))
+	logger.Infof("save component images success, Take %s time", time.Since(start))
 	return nil
 }
 
@@ -171,7 +183,7 @@ func SavePlugins(ram v1alpha1.WutongApplicationConfig, imageClient image.Client,
 		logrus.Errorf("Failed to save image(%v) : %s", pluginImageNames, err)
 		return err
 	}
-	logger.Infof("save plugin images success, Take %s time", time.Now().Sub(start))
+	logger.Infof("save plugin images success, Take %s time", time.Since(start))
 	return nil
 }
 
@@ -182,4 +194,9 @@ func Packaging(packageName, homePath, exportPath string) (string, error) {
 		return "", err
 	}
 	return packageName, nil
+}
+
+func CheckFileExist(fileName string) bool {
+	_, err := os.Stat(fileName)
+	return !os.IsNotExist(err)
 }

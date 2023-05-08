@@ -24,7 +24,6 @@ import (
 	"io/ioutil"
 	"path"
 
-	"github.com/docker/docker/client"
 	"github.com/sirupsen/logrus"
 	"github.com/wutong-paas/wutong-oam/pkg/ram/v1alpha1"
 	"github.com/wutong-paas/wutong-oam/pkg/util/image"
@@ -33,7 +32,6 @@ import (
 type ramExporter struct {
 	logger      *logrus.Logger
 	ram         v1alpha1.WutongApplicationConfig
-	client      *client.Client
 	imageClient image.Client
 	mode        string
 	homePath    string
@@ -50,7 +48,7 @@ func (r *ramExporter) Export() (*Result, error) {
 	r.logger.Infof("success prepare export dir")
 	if r.mode == "offline" {
 		// Save components attachments
-		if err := SaveComponents(r.ram, r.imageClient, r.exportPath, r.logger); err != nil {
+		if err := SaveComponents(r.ram, r.imageClient, r.exportPath, r.logger, []string{}); err != nil {
 			return nil, err
 		}
 		r.logger.Infof("success save components")
@@ -68,7 +66,7 @@ func (r *ramExporter) Export() (*Result, error) {
 	packageName := fmt.Sprintf("%s-%s-ram.tar.gz", r.ram.AppName, r.ram.AppVersion)
 	name, err := Packaging(packageName, r.homePath, r.exportPath)
 	if err != nil {
-		err = fmt.Errorf("Failed to package app %s: %s ", packageName, err.Error())
+		err = fmt.Errorf("failed to package app %s: %s", packageName, err.Error())
 		r.logger.Error(err)
 		return nil, err
 	}

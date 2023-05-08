@@ -52,7 +52,7 @@ func (s *slugExporter) Export() (*Result, error) {
 	s.logger.Infof("success prepare export dir")
 	if s.mode == "offline" {
 		// Save components attachments
-		if err := SaveComponents(s.ram, s.imageClient, s.exportPath, s.logger); err != nil {
+		if err := SaveComponents(s.ram, s.imageClient, s.exportPath, s.logger, []string{}); err != nil {
 			return nil, err
 		}
 		s.logger.Infof("success save components")
@@ -142,7 +142,7 @@ func (s *slugExporter) Export() (*Result, error) {
 	packageName := fmt.Sprintf("%s-%s-slug.tar.gz", s.ram.AppName, s.ram.AppVersion)
 	name, err := Packaging(packageName, s.homePath, s.exportPath)
 	if err != nil {
-		err = fmt.Errorf("Failed to package app %s: %s ", packageName, err.Error())
+		err = fmt.Errorf("failed to package app %s: %s", packageName, err.Error())
 		s.logger.Error(err)
 		return nil, err
 	}
@@ -198,7 +198,7 @@ func (s *slugExporter) writeEnvFile(component *v1alpha1.Component, slugPath stri
 		return err
 	}
 	defer f.Close()
-	err = ioutil.WriteFile(envFile, []byte(fileKV), 123)
+	err = ioutil.WriteFile(envFile, []byte(fileKV), 0644)
 	if err != nil {
 		s.logger.Error("Write env to file error", err)
 		return err

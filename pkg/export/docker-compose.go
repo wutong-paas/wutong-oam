@@ -69,7 +69,7 @@ func (d *dockerComposeExporter) Export() (*Result, error) {
 	packageName := fmt.Sprintf("%s-%s-dockercompose.tar.gz", d.ram.AppName, d.ram.AppVersion)
 	name, err := Packaging(packageName, d.homePath, d.exportPath)
 	if err != nil {
-		err = fmt.Errorf("Failed to package app %s: %s ", packageName, err.Error())
+		err = fmt.Errorf("failed to package app %s: %s", packageName, err.Error())
 		d.logger.Error(err)
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (d *dockerComposeExporter) saveComponents() error {
 	for _, component := range d.ram.Components {
 		componentName := component.ServiceCname
 		volumes := component.ServiceVolumeMapList
-		if volumes != nil && len(volumes) > 0 {
+		if len(volumes) > 0 {
 			componentEnName := dockerCompose.GetServiceName(component.ServiceShareID)
 			serviceDir := fmt.Sprintf("%s/%s", d.exportPath, componentEnName)
 			os.MkdirAll(serviceDir, 0755)
@@ -115,7 +115,7 @@ func (d *dockerComposeExporter) saveComponents() error {
 			logrus.Errorf("Failed to save image(%v) : %s", componentImageNames, err)
 			return err
 		}
-		d.logger.Infof("save component images success, Take %s time", time.Now().Sub(start))
+		d.logger.Infof("save component images success, Take %s time", time.Since(start))
 	}
 	return nil
 }
@@ -352,18 +352,18 @@ func (d *dockerCompose) GetServiceName(shareServiceUUID string) string {
 	return d.serviceNames[shareServiceUUID]
 }
 
-func findDepVolume(allVolumes map[string]v1alpha1.ComponentVolumeList, key, volumeName string) *v1alpha1.ComponentVolume {
-	vols := allVolumes[key]
-	// find related volume
-	var volume *v1alpha1.ComponentVolume
-	for _, vol := range vols {
-		if vol.VolumeName == volumeName {
-			volume = &vol
-			break
-		}
-	}
-	return volume
-}
+// func findDepVolume(allVolumes map[string]v1alpha1.ComponentVolumeList, key, volumeName string) *v1alpha1.ComponentVolume {
+// 	vols := allVolumes[key]
+// 	// find related volume
+// 	var volume *v1alpha1.ComponentVolume
+// 	for _, vol := range vols {
+// 		if vol.VolumeName == volumeName {
+// 			volume = &vol
+// 			break
+// 		}
+// 	}
+// 	return volume
+// }
 
 func getPublicEnvByKey(serviceKey string, apps []*v1alpha1.Component) map[string]string {
 	envs := make(map[string]string, 5)

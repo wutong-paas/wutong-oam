@@ -53,6 +53,8 @@ var (
 	SLG AppFormat = "slug"
 	//HELM
 	HELM AppFormat = "helm-chart"
+	//YAML -
+	YAML AppFormat = "k8s-yaml"
 )
 
 // New new exporter
@@ -97,6 +99,15 @@ func New(format AppFormat, homePath string, ram v1alpha1.WutongApplicationConfig
 			mode:        "offline",
 			homePath:    homePath,
 			exportPath:  path.Join(homePath, fmt.Sprintf("%s-%s-helm", ram.AppName, ram.AppVersion)),
+		}, nil
+	case YAML:
+		return &k8sYamlExporter{
+			logger:      logger,
+			ram:         ram,
+			imageClient: imageClient,
+			mode:        "offline",
+			homePath:    homePath,
+			exportPath:  path.Join(homePath, fmt.Sprintf("%s-%s-yaml", ram.AppName, ram.AppVersion)),
 		}, nil
 	default:
 		panic("not support app format")
