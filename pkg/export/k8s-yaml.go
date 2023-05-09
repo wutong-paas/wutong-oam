@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/wutong-paas/wutong-oam/pkg/ram/v1alpha1"
@@ -24,7 +26,11 @@ type k8sYamlExporter struct {
 
 func (y *k8sYamlExporter) Export() (*Result, error) {
 	y.logger.Infof("start export app %s to k8s yaml spec", y.ram.AppName)
-	if err := SaveComponents(y.ram, y.imageClient, y.exportPath, y.logger, []string{}); err != nil {
+	dependentImages, err := y.initK8sYaml()
+	if err != nil {
+		return nil, err
+	}
+	if err := SaveComponents(y.ram, y.imageClient, y.exportPath, y.logger, dependentImages); err != nil {
 		y.logger.Errorf("k8s yaml export save component failure %v", err)
 		return nil, err
 	}
@@ -34,9 +40,7 @@ func (y *k8sYamlExporter) Export() (*Result, error) {
 		return nil, err
 	}
 	y.logger.Infof("success save plugins")
-	if err := y.init(); err != nil {
-		return nil, err
-	}
+
 	packageName := fmt.Sprintf("%s-%s-yaml.tar.gz", y.ram.AppName, y.ram.AppVersion)
 	name, err := Packaging(packageName, y.homePath, y.exportPath)
 	if err != nil {
@@ -48,12 +52,29 @@ func (y *k8sYamlExporter) Export() (*Result, error) {
 	return &Result{PackagePath: path.Join(y.homePath, name), PackageName: name}, nil
 }
 
-func (y *k8sYamlExporter) init() error {
-	yamlPath := path.Join(y.exportPath, y.ram.AppName)
-	return y.writeYaml(yamlPath)
+func (y *k8sYamlExporter) initK8sYaml() ([]string, error) {
+	k8sYamlPath := path.Join(y.exportPath, y.ram.AppName)
+	for i := 0; i < 40; i++ {
+		time.Sleep(1 * time.Second)
+		if CheckFileExist(path.Join(k8sYamlPath, "dependent_image.txt")) {
+			y.logger.Infof("dependent_image.txt creeate success")
+			break
+		}
+	}
+	content, err := os.ReadFile(path.Join(k8sYamlPath, "dependent_image.txt"))
+	if err != nil {
+		y.logger.Errorf("read file dependent_image.txt failure %v", err)
+		return nil, err
+	}
+	dependentImages := strings.Split(string(content), "\n")
+	err = y.writeK8sYaml(k8sYamlPath)
+	if err != nil {
+		return nil, err
+	}
+	return dependentImages, nil
 }
 
-func (y *k8sYamlExporter) writeYaml(yamlPath string) error {
+func (y *k8sYamlExporter) writeK8sYaml(yamlPath string) error {
 	for _, k8sResource := range y.ram.K8sResources {
 		var unstructuredObject unstructured.Unstructured
 		err := yaml.Unmarshal([]byte(k8sResource.Content), &unstructuredObject)
