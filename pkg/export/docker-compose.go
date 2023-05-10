@@ -98,7 +98,7 @@ func (d *dockerComposeExporter) saveComponents() error {
 				}
 			}
 		}
-		if component.ShareImage != "" {
+		if d.ram.WithImageData && component.ShareImage != "" {
 			// app is image type
 			_, err := d.imageClient.ImagePull(component.ShareImage, component.AppImage.HubUser, component.AppImage.HubPassword, 30)
 			if err != nil {
@@ -108,7 +108,7 @@ func (d *dockerComposeExporter) saveComponents() error {
 			componentImageNames = append(componentImageNames, component.ShareImage)
 		}
 	}
-	if len(componentImageNames) > 0 {
+	if d.ram.WithImageData && len(componentImageNames) > 0 {
 		start := time.Now()
 		err := d.imageClient.ImageSave(fmt.Sprintf("%s/component-images.tar", d.exportPath), componentImageNames)
 		if err != nil {

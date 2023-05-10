@@ -135,6 +135,9 @@ func exportComponentConfigFile(serviceDir string, v v1alpha1.ComponentVolume) er
 }
 
 func SaveComponents(ram v1alpha1.WutongApplicationConfig, imageClient image.Client, exportPath string, logger *logrus.Logger, dependentImages []string) error {
+	if !ram.WithImageData {
+		return nil
+	}
 	var componentImageNames []string
 	for _, component := range ram.Components {
 		componentName := unicode2zh(component.ServiceCname)
@@ -165,6 +168,10 @@ func SaveComponents(ram v1alpha1.WutongApplicationConfig, imageClient image.Clie
 }
 
 func SavePlugins(ram v1alpha1.WutongApplicationConfig, imageClient image.Client, exportPath string, logger *logrus.Logger) error {
+	if !ram.WithImageData {
+		return nil
+	}
+
 	var pluginImageNames []string
 	for _, plugin := range ram.Plugins {
 		if plugin.ShareImage != "" {
