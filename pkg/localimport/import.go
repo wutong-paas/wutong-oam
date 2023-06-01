@@ -32,6 +32,7 @@ import (
 	"github.com/wutong-paas/wutong-oam/pkg/export"
 	"github.com/wutong-paas/wutong-oam/pkg/ram/v1alpha1"
 	"github.com/wutong-paas/wutong-oam/pkg/util"
+	"github.com/wutong-paas/wutong-oam/pkg/util/docker"
 	"github.com/wutong-paas/wutong-oam/pkg/util/image"
 )
 
@@ -124,71 +125,73 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 		if com.ShareImage == "" {
 			com.ShareImage = com.Image
 		}
+
 		// new hub info
-		// newImageName, err := docker.NewImageName(com.ShareImage, hubInfo)
-		// if err != nil {
-		// 	r.logger.Errorf("parse image failure %s", err.Error())
-		// 	return nil, err
-		// }
-		// err = r.imageClient.ImageTag(com.ShareImage, newImageName, 2)
-		// if err != nil {
-		// 	//Compatibility History Version
-		// 	if strings.Contains(err.Error(), "No such image") {
-		// 		var saveImage string
-		// 		saveImage, err = docker.GetOldSaveImageName(com.ShareImage, false)
-		// 		if err != nil {
-		// 			return nil, err
-		// 		}
-		// 		err = r.imageClient.ImageTag(saveImage, newImageName, 2)
-		// 	}
-		// 	if err != nil {
-		// 		logrus.Errorf("change image %s tag to %s failure %s", com.ShareImage, newImageName, err.Error())
-		// 		return nil, err
-		// 	}
-		// }
-		// r.logger.Infof("start push image %s", newImageName)
-		// if err := r.imageClient.ImagePush(newImageName, hubInfo.HubUser, hubInfo.HubPassword, 20); err != nil {
-		// 	logrus.Errorf("push image %s failure %s", newImageName, err.Error())
-		// 	return nil, err
-		// }
-		// r.logger.Infof("push image %s success", newImageName)
-		// com.AppImage = hubInfo
-		// com.ShareImage = newImageName
+		newImageName, err := docker.NewImageName(com.ShareImage, hubInfo)
+		if err != nil {
+			r.logger.Errorf("parse image failure %s", err.Error())
+			return nil, err
+		}
+		err = r.imageClient.ImageTag(com.ShareImage, newImageName, 2)
+		if err != nil {
+			//Compatibility History Version
+			if strings.Contains(err.Error(), "No such image") {
+				var saveImage string
+				saveImage, err = docker.GetOldSaveImageName(com.ShareImage, false)
+				if err != nil {
+					return nil, err
+				}
+				err = r.imageClient.ImageTag(saveImage, newImageName, 2)
+			}
+			if err != nil {
+				logrus.Errorf("change image %s tag to %s failure %s", com.ShareImage, newImageName, err.Error())
+				return nil, err
+			}
+		}
+		r.logger.Infof("start push image %s", newImageName)
+		if err := r.imageClient.ImagePush(newImageName, hubInfo.HubUser, hubInfo.HubPassword, 20); err != nil {
+			logrus.Errorf("push image %s failure %s", newImageName, err.Error())
+			return nil, err
+		}
+		r.logger.Infof("push image %s success", newImageName)
+		com.AppImage = hubInfo
+		com.ShareImage = newImageName
 	}
 	for _, plugin := range ram.Plugins {
 		if plugin.ShareImage == "" {
 			plugin.ShareImage = plugin.Image
 		}
+
 		// new hub info
-		// newImageName, err := docker.NewImageName(plugin.ShareImage, hubInfo)
-		// if err != nil {
-		// 	r.logger.Errorf("parse image failure %s", err.Error())
-		// 	return nil, err
-		// }
-		// err = r.imageClient.ImageTag(plugin.ShareImage, newImageName, 2)
-		// if err != nil {
-		// 	//Compatibility History Version
-		// 	if strings.Contains(err.Error(), "No such image") {
-		// 		var saveImage string
-		// 		saveImage, err = docker.GetOldSaveImageName(plugin.ShareImage, false)
-		// 		if err != nil {
-		// 			return nil, err
-		// 		}
-		// 		err = r.imageClient.ImageTag(saveImage, newImageName, 2)
-		// 	}
-		// 	if err != nil {
-		// 		logrus.Errorf("change image %s tag to %s failure %s", plugin.ShareImage, newImageName, err.Error())
-		// 		return nil, err
-		// 	}
-		// }
-		// r.logger.Infof("start push image %s", newImageName)
-		// if err := r.imageClient.ImagePush(newImageName, hubInfo.HubUser, hubInfo.HubPassword, 20); err != nil {
-		// 	logrus.Errorf("push image %s failure %s", newImageName, err.Error())
-		// 	return nil, err
-		// }
-		// r.logger.Infof("push image %s success", newImageName)
-		// ram.Plugins[i].PluginImage = hubInfo
-		// ram.Plugins[i].ShareImage = newImageName
+		newImageName, err := docker.NewImageName(plugin.ShareImage, hubInfo)
+		if err != nil {
+			r.logger.Errorf("parse image failure %s", err.Error())
+			return nil, err
+		}
+		err = r.imageClient.ImageTag(plugin.ShareImage, newImageName, 2)
+		if err != nil {
+			//Compatibility History Version
+			if strings.Contains(err.Error(), "No such image") {
+				var saveImage string
+				saveImage, err = docker.GetOldSaveImageName(plugin.ShareImage, false)
+				if err != nil {
+					return nil, err
+				}
+				err = r.imageClient.ImageTag(saveImage, newImageName, 2)
+			}
+			if err != nil {
+				logrus.Errorf("change image %s tag to %s failure %s", plugin.ShareImage, newImageName, err.Error())
+				return nil, err
+			}
+		}
+		r.logger.Infof("start push image %s", newImageName)
+		if err := r.imageClient.ImagePush(newImageName, hubInfo.HubUser, hubInfo.HubPassword, 20); err != nil {
+			logrus.Errorf("push image %s failure %s", newImageName, err.Error())
+			return nil, err
+		}
+		r.logger.Infof("push image %s success", newImageName)
+		plugin.PluginImage = hubInfo
+		plugin.ShareImage = newImageName
 	}
 	return &ram, nil
 }
