@@ -126,6 +126,11 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 			com.ShareImage = com.Image
 		}
 
+		// 如果是集群配置镜像，不需要重命名镜像
+		if len(hubInfo.HubURL) > 0 && strings.HasPrefix(com.ShareImage, hubInfo.HubURL) {
+			continue
+		}
+
 		// new hub info
 		newImageName, err := docker.NewImageName(com.ShareImage, hubInfo)
 		if err != nil {
@@ -160,6 +165,11 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 	for _, plugin := range ram.Plugins {
 		if plugin.ShareImage == "" {
 			plugin.ShareImage = plugin.Image
+		}
+
+		// 如果是集群配置镜像，不需要重命名镜像
+		if len(hubInfo.HubURL) > 0 && strings.HasPrefix(plugin.ShareImage, hubInfo.HubURL) {
+			continue
 		}
 
 		// new hub info
