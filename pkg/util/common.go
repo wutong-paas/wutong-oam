@@ -20,6 +20,7 @@ package util
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -34,6 +35,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/wutong-paas/wutong-oam/pkg/util/zip"
 )
+
+var ErrLocalImageNotFound = errors.New("local image not found")
 
 // NewUUID new uuid string
 func NewUUID() string {

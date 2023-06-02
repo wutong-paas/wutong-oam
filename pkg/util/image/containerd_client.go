@@ -26,6 +26,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"github.com/wutong-paas/wutong-oam/pkg/util"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -302,13 +303,14 @@ func (c *containerdImageCliImpl) ImageTag(source, target string, timeout int) er
 		return err
 	}
 	targetImage := targetNamed.String()
-	logrus.Infof(fmt.Sprintf("change image tag：%s -> %s", srcImage, targetImage))
+	logrus.Infof(fmt.Sprintf("change image tag: %s -> %s", srcImage, targetImage))
 	ctx := namespaces.WithNamespace(context.Background(), Namespace)
 	imageService := c.client.ImageService()
 	image, err := imageService.Get(ctx, srcImage)
 	if err != nil {
+		// 本地没有该镜像，说明没有被 Load，则直接返回
 		logrus.Errorf("imagetag imageService Get error: %s", err.Error())
-		return err
+		return util.ErrLocalImageNotFound
 	}
 	image.Name = targetImage
 	if _, err = imageService.Create(ctx, image); err != nil {

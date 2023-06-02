@@ -132,6 +132,8 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 		}
 
 		// new hub info
+		// 本地是否已经有shareimage
+		// err=r.imageClient.
 		newImageName, err := docker.NewImageName(com.ShareImage, hubInfo)
 		if err != nil {
 			r.logger.Errorf("parse image failure %s", err.Error())
@@ -139,6 +141,10 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 		}
 		err = r.imageClient.ImageTag(com.ShareImage, newImageName, 2)
 		if err != nil {
+			if err == util.ErrLocalImageNotFound {
+				// 镜像在本地不存在，跳过
+				continue
+			}
 			//Compatibility History Version
 			if strings.Contains(err.Error(), "No such image") {
 				var saveImage string
@@ -147,6 +153,10 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 					return nil, err
 				}
 				err = r.imageClient.ImageTag(saveImage, newImageName, 2)
+			}
+			if err == util.ErrLocalImageNotFound {
+				// 镜像在本地不存在，跳过
+				continue
 			}
 			if err != nil {
 				logrus.Errorf("change image %s tag to %s failure %s", com.ShareImage, newImageName, err.Error())
@@ -180,6 +190,10 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 		}
 		err = r.imageClient.ImageTag(plugin.ShareImage, newImageName, 2)
 		if err != nil {
+			if err == util.ErrLocalImageNotFound {
+				// 镜像在本地不存在，跳过
+				continue
+			}
 			//Compatibility History Version
 			if strings.Contains(err.Error(), "No such image") {
 				var saveImage string
@@ -188,6 +202,10 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 					return nil, err
 				}
 				err = r.imageClient.ImageTag(saveImage, newImageName, 2)
+			}
+			if err == util.ErrLocalImageNotFound {
+				// 镜像在本地不存在，跳过
+				continue
 			}
 			if err != nil {
 				logrus.Errorf("change image %s tag to %s failure %s", plugin.ShareImage, newImageName, err.Error())
