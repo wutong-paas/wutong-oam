@@ -116,7 +116,7 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 				if err.Error() != "unrecognized image format" {
 					return nil, err
 				}
-				logrus.Warningf("docker image tar is empty，so unrecognized image format")
+				logrus.Warningf("docker image tar is empty, so unrecognized image format")
 			}
 			r.logger.Infof("load image from file %s success", f)
 		}

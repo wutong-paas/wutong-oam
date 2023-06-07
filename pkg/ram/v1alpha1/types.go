@@ -294,6 +294,7 @@ type Plugin struct {
 	PluginName    string              `json:"plugin_name"`
 	CreateTime    string              `json:"create_time"`
 	ShareImage    string              `json:"share_image"`
+	BuildCommand  string              `json:"build_cmd"`
 	ConfigGroups  []PluginConfigGroup `json:"config_groups,omitempty"`
 	PluginKey     string              `json:"plugin_key"`
 	BuildSource   string              `json:"build_source"`
