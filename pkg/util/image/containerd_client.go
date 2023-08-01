@@ -38,6 +38,7 @@ type containerdImageCliImpl struct {
 // destination destination file name eg. /tmp/xxx.tar
 func (c *containerdImageCliImpl) ImageSave(destination string, images []string) error {
 	var exportOpts []archive.ExportOpt
+	exportOpts = append(exportOpts, archive.WithPlatform(platforms.DefaultStrict()))
 	for _, image := range images {
 		ref, err := refdocker.ParseDockerRef(image)
 		if err != nil {
