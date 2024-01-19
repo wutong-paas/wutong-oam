@@ -131,6 +131,11 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 			continue
 		}
 
+		// 如果不是集群配置镜像仓库，但是又没有设置访问账号，那么认为这是一个公开镜像，不需要重命名镜像
+		if len(hubInfo.HubUser) == 0 {
+			continue
+		}
+
 		// new hub info
 		// 本地是否已经有shareimage
 		// err=r.imageClient.
@@ -179,6 +184,11 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 
 		// 如果是集群配置镜像，不需要重命名镜像
 		if len(hubInfo.HubURL) > 0 && strings.HasPrefix(plugin.ShareImage, hubInfo.HubURL) {
+			continue
+		}
+
+		// 如果不是集群配置镜像仓库，但是又没有设置访问账号，那么认为这是一个公开镜像，不需要重命名镜像
+		if len(plugin.PluginImage.HubUser) == 0 {
 			continue
 		}
 
