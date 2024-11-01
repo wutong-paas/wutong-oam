@@ -122,7 +122,7 @@ func (d *dockerComposeExporter) saveComponents() error {
 
 func (d *dockerComposeExporter) buildDockerComposeYaml() error {
 	y := &DockerComposeYaml{
-		Version:  "2.1",
+		Version:  "3.1",
 		Volumes:  make(map[string]GlobalVolume, 5),
 		Services: make(map[string]*Service, 5),
 	}

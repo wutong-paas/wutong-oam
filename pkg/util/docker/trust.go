@@ -30,13 +30,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//trustedRegistryClient
+// trustedRegistryClient
 type trustedRegistryClient struct {
 	httpCli            *http.Client
 	server, user, pass string
 }
 
-//Repostory repostory info
+// Repostory repostory info
 type Repostory struct {
 	ID               int    `json:"id,omitempty"`
 	Namespace        string `json:"namespace,omitempty"`
@@ -141,13 +141,13 @@ func (t *trustedRegistryClient) handleErrorResponse(res *http.Response) error {
 	case 400:
 		return fmt.Errorf("parameter error or resource is exist")
 	case 401:
-		return fmt.Errorf("The client is not authenticated")
+		return fmt.Errorf("the client is not authenticated")
 	case 403:
-		return fmt.Errorf("The client is not authorized")
+		return fmt.Errorf("the client is not authorized")
 	case 404:
 		return fmt.Errorf("resource does not exist")
 	case 409:
-		return fmt.Errorf("Auth not yet configured. A system administrator has not yet set up an auth method")
+		return fmt.Errorf("auth not yet configured. A system administrator has not yet set up an auth method")
 	default:
 		return fmt.Errorf("response code is %d", res.StatusCode)
 	}

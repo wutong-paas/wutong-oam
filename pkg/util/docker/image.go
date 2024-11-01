@@ -29,8 +29,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 	"github.com/sirupsen/logrus"
 	"github.com/wutong-paas/wutong-oam/pkg/ram/v1alpha1"
@@ -46,21 +48,21 @@ var ErrorNoImage = fmt.Errorf("image not exist")
 
 // ImagePull pull docker image
 // timeout minutes of the unit
-func ImagePull(dockerCli *client.Client, image string, username, password string, timeout int) (*types.ImageInspect, error) {
-	var pullipo types.ImagePullOptions
+func ImagePull(dockerCli *client.Client, imageName string, username, password string, timeout int) (*types.ImageInspect, error) {
+	var pullipo image.PullOptions
 	if username != "" && password != "" {
-		auth, err := EncodeAuthToBase64(types.AuthConfig{Username: username, Password: password})
+		auth, err := EncodeAuthToBase64(registry.AuthConfig{Username: username, Password: password})
 		if err != nil {
 			logrus.Errorf("make auth base63 push image error: %s", err.Error())
 			return nil, err
 		}
-		pullipo = types.ImagePullOptions{
+		pullipo = image.PullOptions{
 			RegistryAuth: auth,
 		}
 	} else {
-		pullipo = types.ImagePullOptions{}
+		pullipo = image.PullOptions{}
 	}
-	rf, err := reference.ParseAnyReference(image)
+	rf, err := reference.ParseAnyReference(imageName)
 	if err != nil {
 		logrus.Errorf("reference image error: %s", err.Error())
 		return nil, err
@@ -74,9 +76,9 @@ func ImagePull(dockerCli *client.Client, image string, username, password string
 	//TODO: 使用1.12版本api的bug “repository name must be canonical”，使用rf.String()完整的镜像地址
 	readcloser, err := dockerCli.ImagePull(ctx, rf.String(), pullipo)
 	if err != nil {
-		logrus.Debugf("image name: %s readcloser error: %v", image, err.Error())
+		logrus.Debugf("image name: %s readcloser error: %v", imageName, err.Error())
 		if strings.HasSuffix(err.Error(), "does not exist or no pull access") {
-			return nil, fmt.Errorf("Image(%s) does not exist or no pull access", image)
+			return nil, fmt.Errorf("Image(%s) does not exist or no pull access", imageName)
 		}
 		return nil, err
 	}
@@ -101,7 +103,7 @@ func ImagePull(dockerCli *client.Client, image string, username, password string
 			return nil, jm.Error
 		}
 	}
-	ins, _, err := dockerCli.ImageInspectWithRaw(ctx, image)
+	ins, _, err := dockerCli.ImageInspectWithRaw(ctx, imageName)
 	if err != nil {
 		return nil, err
 	}
@@ -128,33 +130,33 @@ func ImageTag(dockerCli *client.Client, source, target string, timeout int) erro
 
 // ImagePush push image to registry
 // timeout minutes of the unit
-func ImagePush(dockerCli *client.Client, image, username, password string, timeout int) error {
+func ImagePush(dockerCli *client.Client, imageName, username, password string, timeout int) error {
 	if timeout < 1 {
 		timeout = 1
 	}
-	_, err := reference.ParseNormalizedNamed(image)
+	_, err := reference.ParseNormalizedNamed(imageName)
 	if err != nil {
 		return err
 	}
-	var pushipo types.ImagePushOptions
+	var pushipo image.PushOptions
 	if username != "" && password != "" {
-		auth, err := EncodeAuthToBase64(types.AuthConfig{Username: username, Password: password})
+		auth, err := EncodeAuthToBase64(registry.AuthConfig{Username: username, Password: password})
 		if err != nil {
 			logrus.Errorf("make auth base63 push image error: %s", err.Error())
 			return err
 		}
-		pushipo = types.ImagePushOptions{
+		pushipo = image.PushOptions{
 			RegistryAuth: auth,
 		}
 	} else {
-		pushipo = types.ImagePushOptions{}
+		pushipo = image.PushOptions{}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*time.Duration(timeout))
 	defer cancel()
-	readcloser, err := dockerCli.ImagePush(ctx, image, pushipo)
+	readcloser, err := dockerCli.ImagePush(ctx, imageName, pushipo)
 	if err != nil {
 		if strings.Contains(err.Error(), "does not exist") {
-			return fmt.Errorf("Image(%s) does not exist", image)
+			return fmt.Errorf("Image(%s) does not exist", imageName)
 		}
 		return err
 	}
@@ -183,11 +185,11 @@ func ImagePush(dockerCli *client.Client, image, username, password string, timeo
 }
 
 // TrustedImagePush push image to trusted registry
-func TrustedImagePush(dockerCli *client.Client, image, user, pass string, timeout int) error {
-	if err := CheckTrustedRepositories(image, user, pass); err != nil {
+func TrustedImagePush(dockerCli *client.Client, imageName, user, pass string, timeout int) error {
+	if err := CheckTrustedRepositories(imageName, user, pass); err != nil {
 		return err
 	}
-	return ImagePush(dockerCli, image, user, pass, timeout)
+	return ImagePush(dockerCli, imageName, user, pass, timeout)
 }
 
 // CheckTrustedRepositories check Repositories is exist ,if not create it.
@@ -240,7 +242,7 @@ func CheckTrustedRepositories(image, user, pass string) error {
 }
 
 // EncodeAuthToBase64 serializes the auth configuration as JSON base64 payload
-func EncodeAuthToBase64(authConfig types.AuthConfig) (string, error) {
+func EncodeAuthToBase64(authConfig registry.AuthConfig) (string, error) {
 	buf, err := json.Marshal(authConfig)
 	if err != nil {
 		return "", err
@@ -326,7 +328,7 @@ func ImageLoad(dockerCli *client.Client, tarFile string) error {
 
 // ImageImport save image to tar file
 // source source file name eg. /tmp/xxx.tar
-func ImageImport(dockerCli *client.Client, image, source string) error {
+func ImageImport(dockerCli *client.Client, imageName, source string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -336,14 +338,14 @@ func ImageImport(dockerCli *client.Client, image, source string) error {
 	}
 	defer file.Close()
 
-	isource := types.ImageImportSource{
+	isource := image.ImportSource{
 		Source:     file,
 		SourceName: "-",
 	}
 
-	options := types.ImageImportOptions{}
+	options := image.ImportOptions{}
 
-	readcloser, err := dockerCli.ImageImport(ctx, isource, image, options)
+	readcloser, err := dockerCli.ImageImport(ctx, isource, imageName, options)
 	if err != nil {
 		return err
 	}
@@ -394,10 +396,10 @@ func CopyToFile(outfile string, r io.Reader) error {
 }
 
 // ImageRemove remove image
-func ImageRemove(dockerCli *client.Client, image string) error {
+func ImageRemove(dockerCli *client.Client, imageName string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	_, err := dockerCli.ImageRemove(ctx, image, types.ImageRemoveOptions{Force: true})
+	_, err := dockerCli.ImageRemove(ctx, imageName, image.RemoveOptions{Force: true})
 	return err
 }
 
@@ -415,22 +417,13 @@ func GetTagFromNamedRef(ref reference.Named) string {
 
 // NewImageName new image name
 func NewImageName(source string, hubInfo v1alpha1.ImageInfo) (string, error) {
-	ref, err := reference.ParseAnyReference(source)
-	if err != nil {
-		return "", err
+	var nameTag string
+	if strings.Contains(source, "/") {
+		nameTag = source[strings.LastIndex(source, "/")+1:]
 	}
-	name, err := reference.ParseNamed(ref.String())
-	if err != nil {
-		return "", err
-	}
-	_, onlyname := reference.SplitHostname(name)
-	if strings.Contains(onlyname, "/") {
-		onlyname = onlyname[strings.Index(onlyname, "/")+1:]
-	}
-	tag := GetTagFromNamedRef(name)
-	newImageName := fmt.Sprintf("%s/%s:%s", hubInfo.HubURL, onlyname, tag)
+	newImageName := fmt.Sprintf("%s/%s", hubInfo.HubURL, nameTag)
 	if hubInfo.Namespace != "" {
-		newImageName = fmt.Sprintf("%s/%s/%s:%s", hubInfo.HubURL, hubInfo.Namespace, onlyname, tag)
+		newImageName = fmt.Sprintf("%s/%s/%s", hubInfo.HubURL, hubInfo.Namespace, nameTag)
 	}
 	return newImageName, nil
 }
@@ -445,12 +438,12 @@ func GetOldSaveImageName(source string, withDomain bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	domain, onlyname := reference.SplitHostname(name)
-	if strings.Contains(onlyname, "/") {
-		onlyname = onlyname[strings.Index(onlyname, "/")+1:]
+	var nameTag string
+	if strings.Contains(source, "/") {
+		nameTag = source[strings.LastIndex(source, "/")+1:]
 	}
 	if withDomain {
-		return fmt.Sprintf("%s/%s:%s", domain, onlyname, GetTagFromNamedRef(name)), nil
+		return fmt.Sprintf("%s/%s", reference.Domain(name), nameTag), nil
 	}
-	return fmt.Sprintf("%s:%s", onlyname, GetTagFromNamedRef(name)), nil
+	return nameTag, nil
 }
