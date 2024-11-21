@@ -18,11 +18,11 @@ import (
 	"github.com/containerd/containerd/images/archive"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/pkg/progress"
-	"github.com/containerd/containerd/platforms"
-	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
 	"github.com/containerd/containerd/remotes/docker/config"
+	"github.com/containerd/platforms"
+	"github.com/distribution/reference"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -40,7 +40,7 @@ func (c *containerdImageCliImpl) ImageSave(destination string, images []string) 
 	var exportOpts []archive.ExportOpt
 	exportOpts = append(exportOpts, archive.WithPlatform(platforms.DefaultStrict()))
 	for _, image := range images {
-		ref, err := refdocker.ParseDockerRef(image)
+		ref, err := reference.ParseDockerRef(image)
 		if err != nil {
 			logrus.Errorf("parse image %s error %s", image, err.Error())
 			continue
@@ -57,7 +57,7 @@ func (c *containerdImageCliImpl) ImageSave(destination string, images []string) 
 }
 
 func (c *containerdImageCliImpl) ImagePull(image string, username, password string, timeout int) (*ocispec.ImageConfig, error) {
-	named, err := refdocker.ParseDockerRef(image)
+	named, err := reference.ParseDockerRef(image)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +147,7 @@ func (c *containerdImageCliImpl) ImageLoad(tarFile string) error {
 }
 
 func (c *containerdImageCliImpl) ImagePush(image, user, pass string, timeout int) error {
-	named, err := refdocker.ParseDockerRef(image)
+	named, err := reference.ParseDockerRef(image)
 	if err != nil {
 		return err
 	}
@@ -294,12 +294,12 @@ func (j *pushjobs) status() []ctrcontent.StatusInfo {
 
 // ImageTag change docker image tag
 func (c *containerdImageCliImpl) ImageTag(source, target string, timeout int) error {
-	srcNamed, err := refdocker.ParseDockerRef(source)
+	srcNamed, err := reference.ParseDockerRef(source)
 	if err != nil {
 		return err
 	}
 	srcImage := srcNamed.String()
-	targetNamed, err := refdocker.ParseDockerRef(target)
+	targetNamed, err := reference.ParseDockerRef(target)
 	if err != nil {
 		return err
 	}
@@ -310,22 +310,22 @@ func (c *containerdImageCliImpl) ImageTag(source, target string, timeout int) er
 	image, err := imageService.Get(ctx, srcImage)
 	if err != nil {
 		// 本地没有该镜像，说明没有被 Load，则直接返回
-		logrus.Errorf("imagetag imageService Get error: %s", err.Error())
+		logrus.Errorf("failed to get image %s: %s", srcImage, err.Error())
 		return util.ErrLocalImageNotFound
 	}
 	image.Name = targetImage
 	if _, err = imageService.Create(ctx, image); err != nil {
 		if errdefs.IsAlreadyExists(err) {
 			if err = imageService.Delete(ctx, image.Name); err != nil {
-				logrus.Errorf("imagetag imageService Delete error: %s", err.Error())
+				logrus.Errorf("failed to delete image %s: %s", image.Name, err.Error())
 				return err
 			}
 			if _, err = imageService.Create(ctx, image); err != nil {
-				logrus.Errorf("imageService Create error: %s", err.Error())
+				logrus.Errorf("failed to create image %s: %s", image.Name, err.Error())
 				return err
 			}
 		} else {
-			logrus.Errorf("imagetag imageService Create error: %s", err.Error())
+			logrus.Errorf("failed to create image %s: %s", image.Name, err.Error())
 			return err
 		}
 	}

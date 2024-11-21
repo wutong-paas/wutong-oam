@@ -21,7 +21,7 @@ package export
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path"
 
 	"github.com/sirupsen/logrus"
@@ -88,7 +88,7 @@ func (r *ramExporter) writeMetaFile() error {
 	if err != nil {
 		return fmt.Errorf("marshal ram meta config failure %s", err.Error())
 	}
-	if err := ioutil.WriteFile(path.Join(r.exportPath, "metadata.json"), meta, 0755); err != nil {
+	if err := os.WriteFile(path.Join(r.exportPath, "metadata.json"), meta, 0755); err != nil {
 		return fmt.Errorf("write ram app meta config file failure %s", err.Error())
 	}
 	return nil

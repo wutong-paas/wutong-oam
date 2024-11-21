@@ -20,7 +20,6 @@ package export
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -131,7 +130,7 @@ func exportComponentConfigFile(serviceDir string, v v1alpha1.ComponentVolume) er
 	filename := fmt.Sprintf("%s%s", serviceDir, v.VolumeMountPath)
 	dir := path.Dir(filename)
 	os.MkdirAll(dir, 0755)
-	return ioutil.WriteFile(filename, []byte(v.FileConent), 0644)
+	return os.WriteFile(filename, []byte(v.FileConent), 0644)
 }
 
 func SaveComponents(ram v1alpha1.WutongApplicationConfig, imageClient image.Client, exportPath string, logger *logrus.Logger, dependentImages []string) error {

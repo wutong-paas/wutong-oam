@@ -21,7 +21,6 @@ package localimport
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -84,7 +83,7 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 	}
 	r.logger.Infof("prepare app meta file success")
 	// read app meta config
-	files, _ := ioutil.ReadDir(r.homeDir)
+	files, _ := os.ReadDir(r.homeDir)
 	if len(files) < 1 {
 		return nil, fmt.Errorf("failed to read files in tmp dir %s", r.homeDir)
 	}
@@ -141,7 +140,7 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 		// err=r.imageClient.
 		newImageName, err := docker.NewImageName(com.ShareImage, hubInfo)
 		if err != nil {
-			r.logger.Errorf("parse image failure %s", err.Error())
+			r.logger.Errorf("failed to parse image %s: %s", com.ShareImage, err.Error())
 			return nil, err
 		}
 		err = r.imageClient.ImageTag(com.ShareImage, newImageName, 2)
@@ -170,7 +169,7 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 		}
 		r.logger.Infof("start push image %s", newImageName)
 		if err := r.imageClient.ImagePush(newImageName, hubInfo.HubUser, hubInfo.HubPassword, 20); err != nil {
-			logrus.Errorf("push image %s failure %s", newImageName, err.Error())
+			logrus.Errorf("failed to push image %s: %s", newImageName, err.Error())
 			return nil, err
 		}
 		r.logger.Infof("push image %s success", newImageName)
@@ -195,7 +194,7 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 		// new hub info
 		newImageName, err := docker.NewImageName(plugin.ShareImage, hubInfo)
 		if err != nil {
-			r.logger.Errorf("parse image failure %s", err.Error())
+			r.logger.Errorf("failed to parse image: %s", err.Error())
 			return nil, err
 		}
 		err = r.imageClient.ImageTag(plugin.ShareImage, newImageName, 2)
@@ -218,13 +217,13 @@ func (r *ramImport) Import(filePath string, hubInfo v1alpha1.ImageInfo) (*v1alph
 				continue
 			}
 			if err != nil {
-				logrus.Errorf("change image %s tag to %s failure %s", plugin.ShareImage, newImageName, err.Error())
+				logrus.Errorf("failed to change image %s tag to %s: %s", plugin.ShareImage, newImageName, err.Error())
 				return nil, err
 			}
 		}
 		r.logger.Infof("start push image %s", newImageName)
 		if err := r.imageClient.ImagePush(newImageName, hubInfo.HubUser, hubInfo.HubPassword, 20); err != nil {
-			logrus.Errorf("push image %s failure %s", newImageName, err.Error())
+			logrus.Errorf("failed to push image %s: %s", newImageName, err.Error())
 			return nil, err
 		}
 		r.logger.Infof("push image %s success", newImageName)

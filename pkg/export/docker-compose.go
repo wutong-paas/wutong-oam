@@ -20,7 +20,6 @@ package export
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"time"
@@ -199,7 +198,7 @@ func (d *dockerComposeExporter) buildDockerComposeYaml() error {
 		return err
 	}
 
-	err = ioutil.WriteFile(fmt.Sprintf("%s/docker-compose.yaml", d.exportPath), content, 0644)
+	err = os.WriteFile(fmt.Sprintf("%s/docker-compose.yaml", d.exportPath), content, 0644)
 	if err != nil {
 		d.logger.Error("Failed to create yaml file: ", err)
 		return err
@@ -208,7 +207,7 @@ func (d *dockerComposeExporter) buildDockerComposeYaml() error {
 }
 
 func (d *dockerComposeExporter) buildStartScript() error {
-	if err := ioutil.WriteFile(path.Join(d.exportPath, "run.sh"), []byte(runScritShell), 0755); err != nil {
+	if err := os.WriteFile(path.Join(d.exportPath, "run.sh"), []byte(runScritShell), 0755); err != nil {
 		d.logger.Errorf("write run shell script failure %s", err.Error())
 		return err
 	}
